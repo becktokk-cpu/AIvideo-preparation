@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>分鏡指令選擇器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0e13; --panel:#14171f; --card:#1a1e28; --line:#2a2f3c; --text:#e9e6df; --muted:#9097a6;
+  --accent:#f0b354; --accent-soft:rgba(240,179,84,.14); --ok:#6fcf97; --mid:#f2c94c; --bad:#eb5757;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans TC",system-ui,sans-serif;font-size:15px;line-height:1.5}
+header{padding:22px 24px 8px;max-width:1400px;margin:0 auto}
+header h1{margin:0;font-size:22px;letter-spacing:.04em}
+header p{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;max-width:1400px;margin:0 auto;padding:12px 24px 60px}
+@media (max-width:980px){.wrap{grid-template-columns:1fr}.out{position:static!important;max-height:none!important}}
+section.cat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;margin-bottom:16px}
+.cat-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.cat-h h2{margin:0;font-size:16px}
+.cat-h .num{color:var(--accent);font-weight:700;font-size:13px}
+.cat-h .hint{color:var(--muted);font-size:12.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.card{background:var(--card);border:1.5px solid transparent;border-radius:10px;padding:6px 6px 8px;cursor:pointer;text-align:left;color:inherit;font:inherit;transition:border-color .15s,transform .15s;position:relative}
+.card:hover{border-color:#3a4152;transform:translateY(-1px)}
+.card.sel{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),var(--card) 60%)}
+.card svg{display:block;width:100%;height:auto;border-radius:6px;background:#0f121a}
+.card .lb{font-weight:700;font-size:13.5px;margin:6px 2px 0}
+.card .ds{color:var(--muted);font-size:11.5px;margin:1px 2px 0;line-height:1.35}
+.risk{position:absolute;top:10px;right:10px;font-size:10.5px;padding:1px 6px;border-radius:20px;background:rgba(0,0,0,.6);font-weight:700}
+.r0{color:var(--ok)}.r1{color:#a8d8b9}.r2{color:var(--mid)}.r3{color:#f2994a}.r4,.r5{color:var(--bad)}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+input[type=text],textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px}
+textarea{resize:vertical;min-height:58px}
+input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:5px 12px;cursor:pointer;color:var(--text);font:inherit;font-size:13px}
+.chip.sel{border-color:var(--accent);background:var(--accent-soft);color:#fff}
+.out{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.out h3{margin:0 0 8px;font-size:15px}
+.meter{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar{flex:1;height:8px;border-radius:8px;background:#232836;overflow:hidden}
+.bar i{display:block;height:100%;width:0;transition:width .25s,background .25s}
+.lvl{font-weight:700;font-size:13px;min-width:74px;text-align:right}
+ul.tips{margin:6px 0 12px;padding-left:18px;color:#d6d2c8;font-size:12.5px}
+ul.tips li{margin:3px 0}
+.tabs{display:flex;gap:6px;margin:8px 0}
+.tab{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;font:inherit;font-size:12.5px}
+.tab.sel{color:#fff;border-color:var(--accent)}
+textarea.prompt{width:100%;white-space:pre-wrap;word-break:break-word;background:#0b0d12;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;font-size:13.5px;line-height:1.6;margin:0;min-height:220px;resize:vertical;display:block}
+textarea.prompt:focus{outline:none;border-color:var(--accent)}
+.edited{display:none;font-size:12px;color:var(--mid);margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap}
+.edited.on{display:flex}
+.edited button{background:transparent;border:1px solid var(--mid);color:var(--mid);border-radius:6px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer}
+.btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btns-top{margin-top:0;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.btn{background:var(--accent);color:#1a1205;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+.toast{font-size:12px;color:var(--ok);margin-left:4px;align-self:center}
+.shots{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.shot{background:var(--card);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12.5px;position:relative}
+.shot b{color:var(--accent)}
+.shot .x{position:absolute;top:6px;right:8px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px}
+.shot .load{background:none;border:0;color:#8fb4ff;cursor:pointer;font-size:12px;padding:0;margin-top:4px}
+.empty{color:var(--muted);font-size:12.5px}
+.projs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.agroup{font-size:13px;color:var(--accent);margin:14px 0 8px;font-weight:500}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.acard{background:var(--card);border:1.5px solid transparent;border-radius:10px;padding:5px;cursor:pointer;text-align:left;color:inherit;font:inherit;position:relative}
+.acard:hover{border-color:#3a4152}
+.acard.sel{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),var(--card) 60%)}
+.acard .im{aspect-ratio:4/3;background:#0b0d12;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.acard .im.tall{aspect-ratio:3/4}
+.acard img{width:100%;height:100%;object-fit:contain;display:block}
+.acard .lb{font-weight:700;font-size:13px;margin:5px 2px 0}
+.acard .st{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:10px;margin:3px 2px 0;font-weight:700}
+.st-a{background:rgba(240,179,84,.18);color:var(--accent)}.st-b{background:rgba(111,207,151,.16);color:var(--ok)}.st-c{background:rgba(138,164,214,.18);color:#8aa4d6}.st-d{background:rgba(235,87,87,.16);color:#f08a8a}
+.badge{position:absolute;top:9px;left:9px;background:var(--accent);color:#1a1205;font-weight:700;font-size:12px;border-radius:12px;padding:1px 8px;display:none}
+.acard.sel .badge{display:block}
+.zoom{position:absolute;top:9px;right:9px;background:rgba(0,0,0,.6);border:0;color:#fff;border-radius:6px;font-size:12px;padding:1px 6px;cursor:zoom-in}
+.adel{position:absolute;top:9px;right:34px;background:rgba(0,0,0,.68);border:1px solid rgba(240,138,138,.45);color:#f08a8a;border-radius:6px;font-size:11px;padding:1px 6px;cursor:pointer;line-height:1.4}
+.adel.arm{background:#b83232;color:#fff;border-color:#eb5757;font-weight:700}
+.atool{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.atool .acnt{color:var(--muted);font-size:12px;margin-left:auto}
+.ca-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.ca-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.ca-head b{font-size:14px;color:var(--accent)}
+.ca-drop{border:1.5px dashed #3d4558;border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;background:#0f121a;transition:border-color .15s,background .15s;position:relative;margin-bottom:10px}
+.ca-drop:hover,.ca-drop.over{border-color:var(--accent);background:rgba(240,179,84,.08)}
+.ca-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ca-drop .hint{color:var(--muted);font-size:12px;margin-top:4px}
+.ca-prev{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap}
+.ca-prev img{width:64px;height:64px;object-fit:contain;border-radius:6px;background:#0b0d12;border:1px solid var(--line)}
+.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.ca-grid label.f{font-size:12px}
+.ca-grid select,.ca-grid input[type=text]{background:#0b0d12;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
+.ca-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.ca-msg{font-size:12px;color:var(--ok)}.ca-msg.err{color:#f08a8a}
+details.more-fields{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:rgba(11,13,18,.45)}
+details.more-fields summary{cursor:pointer;font-size:12.5px;color:var(--muted);user-select:none;list-style:none}
+details.more-fields summary::-webkit-details-marker{display:none}
+details.more-fields[open] summary{color:var(--accent);margin-bottom:10px}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:50;padding:24px;cursor:zoom-out}
+#lb.on{display:flex}#lb img{max-width:100%;max-height:84vh;object-fit:contain}#lb .cap{margin-top:10px;font-size:13px;color:#ddd}
+.pvwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1200px){.pvwrap{grid-template-columns:1fr}}
+.pvstage{background:#05070b;border-radius:10px;display:flex;justify-content:center;align-items:center;padding:8px}
+#pvView{position:relative;display:inline-block;cursor:zoom-in;line-height:0}
+#pvGL{max-width:100%;max-height:300px;border-radius:6px;display:block}
+#pvHudT{position:absolute;left:0;right:0;top:0;background:rgba(0,0,0,.55);color:#fff;font:bold 11px "Noto Sans TC",sans-serif;line-height:1.4;padding:3px 6px;display:flex;justify-content:space-between;border-radius:6px 6px 0 0}
+#pvStale{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(240,179,84,.95);color:#1a1205;font:bold 12px "Noto Sans TC",sans-serif;line-height:1.4;padding:6px 10px;border-radius:8px;display:none;text-align:center;max-width:85%}
+#pvView.stale #pvGL{opacity:.45}
+#pvView.stale #pvStale{display:block}
+#pvHudB{position:absolute;left:6px;bottom:4px;color:rgba(255,255,255,.85);font:10px "Noto Sans TC",sans-serif;line-height:1.3}
+.pvbox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.pvbox.big{position:fixed;inset:0;z-index:60;background:rgba(5,7,11,.94);margin:0;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:0}
+#pvClose{display:none}
+.pvbox.big #pvClose{display:block;position:fixed;top:16px;right:16px;z-index:61;background:#fff;color:#111;border:0;border-radius:20px;padding:8px 16px;font:bold 14px "Noto Sans TC",sans-serif;cursor:pointer}
+.pvbox.big h3{display:none}
+.pvbox.big #pvGL{max-height:80vh}
+.pvbox.big #pvView{cursor:zoom-out}
+#pvChars{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.pvrow{background:var(--card);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.pvrow b{font-size:13px;display:block;margin-bottom:6px}
+.pvrow .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.pvsel{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pvsel label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.pvsel select{background:#0f121a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px;font:inherit;font-size:12px}
+.pvnote{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.cat-h{cursor:pointer;user-select:none}
+.cat-h .chev{margin-left:auto;color:var(--muted);font-size:13px;transition:transform .15s}
+.cat.col .cat-h .chev{transform:rotate(-90deg)}
+.cat.col{padding-bottom:12px}
+.cat.col>*:not(.cat-h){display:none!important}
+.cat.col .cat-h{margin-bottom:0}
+.picked{font-size:12px;color:var(--accent);font-weight:700;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar{display:flex;gap:8px;justify-content:flex-end;margin:0 0 10px}
+.toolbar button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}
+.genbar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(20,23,31,.97);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:6px;box-shadow:0 -6px 20px rgba(0,0,0,.35)}
+.genbar #genState{font-size:13px;color:var(--muted)}
+.genbar.dirty{border-color:var(--accent)}
+.genbar.dirty #genState{color:var(--accent);font-weight:700}
+.stalebar{display:none;font-size:12px;background:rgba(240,179,84,.14);color:var(--accent);border:1px solid rgba(240,179,84,.4);border-radius:8px;padding:6px 10px;margin-bottom:8px}
+.stalebar.on{display:block}
+.listbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.listbar select,.listbar input{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+.listbar select{flex:1;min-width:120px}
+.listbar input{flex:1;min-width:120px}
+.listbar button{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}
+.listbar button.danger{color:#f08a8a;border-color:#6b3434}
+.refs{font-size:12.5px;color:#d6d2c8;margin:4px 0 0;padding-left:18px}
+#pvHudA{position:absolute;left:6px;right:6px;bottom:22px;display:none;text-align:center;background:rgba(0,0,0,.6);color:#ffd9a0;font:bold 11px "Noto Sans TC",sans-serif;line-height:1.4;padding:3px 6px;border-radius:6px}
+#pvActs{margin-top:10px;font-size:12.5px}
+.pvbox.big #pvActs{display:none}
+.pvah{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.pvah b{font-size:13px}
+.pvtag{font-size:11px;padding:0 7px;border-radius:10px;background:rgba(138,164,214,.18);color:#8aa4d6}
+.pvtag.man{background:rgba(240,179,84,.18);color:var(--accent)}
+ol.pval{margin:0 0 6px;padding-left:20px;color:#d6d2c8}
+ol.pval li{margin:2px 0}
+.pvActs .tm,#pvActs .tm{color:var(--muted);font-size:11px;margin-right:4px}
+ol.pval .src{color:var(--muted);font-size:11px}
+.pvwarn{background:rgba(235,87,87,.12);border:1px solid rgba(235,87,87,.45);color:#f3a3a3;border-radius:8px;padding:5px 8px;margin:4px 0}
+.pvman{margin-top:6px;background:var(--card);border-radius:8px;padding:8px}
+.pvmrow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:5px}
+.pvmrow select{background:#0f121a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:3px;font:inherit;font-size:12px;max-width:128px}
+.pvmrow select:disabled{opacity:.4}
+.pvmrow button,.pvmb button{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer}
+.pvmrow label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:2px}
+.pvmb{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+[hidden]{display:none!important}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.pvct{margin-top:12px;background:var(--card);border-radius:10px;padding:10px}
+.pvct-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}.pvct-h b{font-size:13.5px}
+.pvct textarea{width:100%;min-height:64px;font-size:13px}
+.pvcr{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}.pvcr .nm{font-size:12.5px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.pvcg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.pvcg label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.pvcg select,.pvsc select{background:#0f121a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px;font:inherit;font-size:12px;min-width:0}
+.pvcg select.man,.pvsc select.man{border-color:var(--accent)}
+.pvsc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.pvsc select{flex:1}
+.pvbox.big #pvCt{display:none}
+.pulse{animation:pulse 1.2s ease 2}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(240,179,84,.45)}}
+/* embed：shots.html 每列內嵌的即時預演 */
+body.embed header,body.embed main,body.embed .out>*:not(#pvBox),body.embed #pvBox>h3,body.embed #pvActs,body.embed #pvCt,body.embed #pvBox>label,body.embed #lb{display:none!important}
+body.embed .wrap{display:block;padding:0;max-width:none}
+body.embed .out{position:static;max-height:none;border:0;padding:0;background:transparent;overflow:visible}
+body.embed .pvbox{margin:0;border:0;padding:0}
+body.embed .pvstage{padding:0;border-radius:0;background:transparent}
+body.embed #pvGL{max-height:calc(100vh - 58px)}
+body.embed #pvView{cursor:default}
+body.embed .btns{margin-top:4px;gap:4px;justify-content:center}
+body.embed .btn{padding:4px 8px;font-size:11.5px}
+body.embed #pvMsg{display:block;width:100%;text-align:center;margin:0;font-size:11px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <linearGradient id="bgG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#263048"/><stop offset="1" stop-color="#0e1119"/></linearGradient>
+  <linearGradient id="lSide" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".42" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".88"/></linearGradient>
+  <linearGradient id="lTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset=".45" stop-color="#000" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></linearGradient>
+  <linearGradient id="lUnder" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff9a3c" stop-opacity=".6"/><stop offset=".6" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></linearGradient>
+  <linearGradient id="lNeonL" x1="0" x2="1"><stop offset="0" stop-color="#ff3fa4" stop-opacity=".75"/><stop offset=".55" stop-color="#ff3fa4" stop-opacity="0"/></linearGradient>
+  <linearGradient id="lNeonR" x1="1" x2="0"><stop offset="0" stop-color="#29d3ff" stop-opacity=".75"/><stop offset=".55" stop-color="#29d3ff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="lSoft" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+  <radialGradient id="glow"><stop offset="0" stop-color="#fff3d6" stop-opacity="1"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient>
+  <radialGradient id="warmGlow"><stop offset="0" stop-color="#ffb35c" stop-opacity=".9"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient>
+  <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <filter id="blur3"><feGaussianBlur stdDeviation="3"/></filter>
+  <filter id="blur1"><feGaussianBlur stdDeviation="1.2"/></filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#f0b354"/></marker>
+</defs>
+</svg>
+
+<header>
+  <h1>分鏡指令選擇器</h1>
+  <p>一個鏡頭只做一件事：一種運鏡、一個表演動作，把電影感寫在光、焦段和構圖上。點卡片選擇（再點一次取消），右邊即時組出指令。卡片右上角的數字是「畫面崩壞風險」。</p>
+</header>
+
+<div class="wrap">
+  <main><div class="toolbar"><button type="button" id="expAll">全部展開</button><button type="button" id="colAll">全部收起</button></div><div id="cats"></div><div class="genbar" id="genbar"><span id="genState">指令已是最新</span><button class="btn" id="genBtn">✔ 產生指令＋更新預演</button></div></main>
+  <aside class="out">
+    <div class="btns btns-top">
+      <button class="btn" id="copyBtn">複製指令</button>
+      <button class="btn ghost" id="addBtn">加入鏡頭表</button>
+      <button class="btn ghost" id="updBtn" hidden>覆寫原鏡頭</button>
+      <a class="btn" id="openShots2" href="shots.html" target="_blank" rel="noopener" hidden>開啟鏡頭表 ↗</a>
+      <button class="btn ghost" id="resetBtn">清空選擇</button>
+      <span class="toast" id="toast"></span>
+    </div>
+    <h3>動作負荷與崩壞風險</h3>
+    <div class="meter"><div class="bar"><i id="barFill"></i></div><div class="lvl" id="lvl">—</div></div>
+    <ul class="tips" id="tips"></ul>
+    <div class="tabs">
+      <button class="tab sel" data-fmt="struct">結構化</button>
+      <button class="tab" data-fmt="zh">單段中文</button>
+      <button class="tab" data-fmt="en">English</button>
+    </div>
+    <div class="stalebar" id="promptStale">左邊選項已修改，這裡還是舊指令。按「產生指令＋更新預演」才會更新。</div>
+    <textarea class="prompt" id="prompt" spellcheck="false" placeholder="選擇左邊的選項後，指令會出現在這裡；也可以直接在這裡修改"></textarea>
+    <div class="edited" id="promptEdited"><span>已手動修改，左邊選項再變動也不會覆蓋</span><button type="button" id="regen">依選項重新產生</button></div>
+    <div class="pvbox" id="pvBox">
+      <h3>3D 站位預演 <span class="empty">點畫面放大</span></h3><button id="pvClose" type="button">✕ 關閉</button>
+      <div class="pvstage"><div id="pvView"><canvas id="pvGL"></canvas><div id="pvHudT"></div><div id="pvStale">已修改<br>請按「產生指令＋更新預演」</div><div id="pvHudA"></div><div id="pvHudB">站位預演｜灰模只作位置與運鏡參考</div></div><canvas id="pvOut" style="display:none"></canvas></div>
+      <div class="btns"><button class="btn ghost" id="pvPlay">▶ 播放預演</button><button class="btn ghost" id="pvRec">● 錄製並下載影片</button><span class="toast" id="pvMsg"></span></div>
+      <div id="pvCt" class="pvct">
+        <div class="pvct-h"><b>畫面內容補充</b><span class="empty">誰・在哪・狀態（姿勢、情緒、手上拿甚麼）→ 預演照此擺位和做動作</span></div>
+        <textarea data-f="content" id="pvContent" placeholder="例：主角 A 生氣地站在門口叉腰，主角 B 推開主角 A；或：主角 A 難過地坐在桌前，拿著杯子喝了一口"></textarea>
+        <div id="pvCtRows"></div>
+      </div>
+      <div id="pvActs"></div>
+      <label style="font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" id="pvUse" checked> 指令加入站位與預演參考</label>
+    </div>
+    <div class="shots">
+      <h3>集數／鏡頭表 <span class="empty" id="shotCount"></span></h3>
+      <div class="listbar"><label class="empty" for="listSel">存入集數</label><select id="listSel" title="「加入鏡頭表」會加到這個集數"></select><button type="button" id="listNewIdx" title="建立新集數">＋ 新集數</button></div>
+      <div class="listbar" id="newEpBox" hidden><input type="text" id="newEpName" placeholder="輸入集數名稱，如：EP01 咖啡廳"><button type="button" id="newEpSave" style="border-color:var(--accent);color:var(--accent)">建立</button><button type="button" id="newEpCancel">取消</button></div>
+      <div class="btns"><a class="btn" id="openShots" href="shots.html" target="_blank" rel="noopener">開啟鏡頭表／審閱板 ↗</a><span class="toast" id="listMsg"></span></div>
+      <div id="shotList" class="empty" style="margin-top:8px">每鏡的指令、素材、分鏡圖、3D 預演與生成影片版本、卡片式審閱板、多集數管理與匯出 Excel／單頁審閱 HTML，都在鏡頭表頁。兩頁共用同一份資料。</div>
+    </div>
+  </aside>
+</div>
+
+<div id="lb"><img alt=""><div class="cap"></div></div>
+<script>
+/* ---------- SVG helpers ---------- */
+const W = (inner, bg='url(#bgG)') => `<svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg"><rect width="160" height="100" fill="${bg}"/>${inner}</svg>`;
+const HAIR = `<path d="M-10.5,0 Q-12,-13 0,-12.5 Q12,-13 10.5,0 Q8,-8 0,-8.5 Q-8,-8 -10.5,0Z" fill="#2a2320"/>`;
+function figure(tx,ty,s,body='#6a7fa8'){
+  return `<g transform="translate(${tx},${ty}) scale(${s})">
+  <path d="M-12,52 L-10,86 L-3,86 L-1,58 L1,58 L3,86 L10,86 L12,52 Z" fill="#2f3a52"/>
+  <path d="M-16,32 Q-16,15 0,14 Q16,15 16,32 L13,54 L-13,54 Z" fill="${body}"/>
+  <path d="M-16,30 L-19,52 L-15,52 L-13,34Z M16,30 L19,52 L15,52 L13,34Z" fill="${body}"/>
+  <rect x="-3" y="8" width="6" height="7" fill="#d9b99b"/>
+  <circle r="10" fill="#e6c7a8"/>${HAIR}
+  <circle cx="-3.5" cy="-0.5" r="1.1" fill="#1a1a1a"/><circle cx="3.5" cy="-0.5" r="1.1" fill="#1a1a1a"/>
+  <path d="M-2.5,5 Q0,6.5 2.5,5" stroke="#9a5a4a" stroke-width=".8" fill="none"/></g>`;
+}
+const floor = `<rect y="82" width="160" height="18" fill="#141925"/>`;
+function cam(x,y,rot=0){
+  return `<g transform="translate(${x},${y}) rotate(${rot})"><rect x="-10" y="-6" width="16" height="12" rx="2" fill="#f0b354"/><path d="M6,-4 L14,-7 L14,7 L6,4Z" fill="#f0b354"/><circle cx="-5" cy="-9" r="3.4" fill="#f0b354"/><circle cx="3" cy="-9" r="3.4" fill="#f0b354"/></g>`;
+}
+const sight = (x1,y1,x2,y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#f0b354" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>`;
+const arrow = (d,w=2) => `<path d="${d}" stroke="#f0b354" stroke-width="${w}" fill="none" marker-end="url(#ar)"/>`;
+const topHead = (x,y) => `<circle cx="${x}" cy="${y}" r="10" fill="#2a2320"/><circle cx="${x}" cy="${y}" r="10" fill="none" stroke="#6a7fa8" stroke-width="5" opacity=".9" transform="translate(0,0)"/><path d="M${x-10},${y} L${x-15},${y-3} L${x-15},${y+3}Z" fill="#e6c7a8"/>`;
+const txt = (x,y,t,size=8,c='#9097a6') => `<text x="${x}" y="${y}" font-size="${size}" fill="${c}" font-family="Noto Sans TC,sans-serif" text-anchor="middle">${t}</text>`;
+
+function face(o={}){
+  const dx=o.dx||0, dy=o.dy||0, pdx=o.pdx||0, pdy=o.pdy||0, ry=o.ry||3.2;
+  let eyes;
+  if(o.closed){ eyes = `<path d="M-16,0 Q-11,3 -6,0 M6,0 Q11,3 16,0" stroke="#1a1a1a" stroke-width="1.4" fill="none"/>`; }
+  else { eyes = `<ellipse cx="-11" cy="-2" rx="5" ry="${ry}" fill="#fff"/><ellipse cx="11" cy="-2" rx="5" ry="${ry}" fill="#fff"/><circle cx="${-11+pdx}" cy="${-2+pdy}" r="${Math.min(2.3,ry)}" fill="#1a1a1a"/><circle cx="${11+pdx}" cy="${-2+pdy}" r="${Math.min(2.3,ry)}" fill="#1a1a1a"/>`; }
+  const brows = {
+    flat:`<path d="M-16,-10 L-6,-10 M6,-10 L16,-10"/>`,
+    up:`<path d="M-16,-11 Q-11,-15 -6,-12 M6,-12 Q11,-15 16,-11"/>`,
+    knit:`<path d="M-16,-12 L-6,-9 M6,-9 L16,-12"/>`,
+    sad:`<path d="M-16,-9 L-6,-12 M6,-12 L16,-9"/>`
+  }[o.brow||'flat'];
+  const mouth = {
+    neutral:`<path d="M-7,18 L7,18" stroke="#9a5a4a" stroke-width="1.6"/>`,
+    smirk:`<path d="M-7,18 Q2,19 9,13" stroke="#9a5a4a" stroke-width="1.6" fill="none"/>`,
+    sad:`<path d="M-7,20 Q0,15 7,20" stroke="#9a5a4a" stroke-width="1.6" fill="none"/>`,
+    press:`<path d="M-8,18 L8,18" stroke="#7a3f33" stroke-width="2.6"/><path d="M-3,18 L3,18" stroke="#e6c7a8" stroke-width="1"/>`,
+    open:`<ellipse cx="0" cy="18" rx="4.5" ry="5" fill="#5a2a22"/>`,
+    small:`<ellipse cx="0" cy="18" rx="3" ry="2" fill="#5a2a22"/>`
+  }[o.mouth||'neutral'];
+  const tear = o.tear ? `<path d="M14,2 Q11,9 14,11 Q17,9 14,2Z" fill="#9fd3ff"/>` : '';
+  const extra = o.extra || '';
+  return `<g transform="translate(${80+dx},${52+dy}) rotate(${o.tilt||0})">
+   <rect x="-9" y="24" width="18" height="12" fill="#d9b99b"/>
+   <path d="M-36,48 Q-34,32 0,30 Q34,32 36,48Z" fill="#6a7fa8"/>
+   <circle r="30" fill="#e6c7a8"/>
+   <path d="M-31,4 Q-34,-35 0,-35 Q34,-35 31,4 Q26,-22 0,-23 Q-26,-22 -31,4Z" fill="#2a2320"/>
+   ${eyes}<g stroke="#2a2320" stroke-width="2" fill="none" stroke-linecap="round">${brows}</g>
+   <path d="M0,3 L-2.5,10 L2.5,10" stroke="#b98d70" stroke-width="1.1" fill="none"/>
+   ${mouth}${tear}${extra}</g>`;
+}
+
+/* ---------- Data ---------- */
+const CATS = [
+ {id:'size', title:'景別', hint:'畫面框住人物多少', items:[
+  {k:'els', zh:'大遠景', en:'extreme wide shot', ds:'交代環境，人很小', risk:0, svg:()=>W(`<path d="M0,70 L30,45 L55,62 L85,35 L120,60 L160,40 L160,100 L0,100Z" fill="#1d2536"/>${floor}${figure(80,70,.16)}`)},
+  {k:'ws', zh:'全景', en:'full shot, head to toe', ds:'全身入鏡，看得到站位', risk:0, svg:()=>W(floor+figure(80,14,.85))},
+  {k:'ms', zh:'中景', en:'medium shot, waist up', ds:'腰上，對話主力', risk:0, svg:()=>W(figure(80,25,1.5))},
+  {k:'mcu', zh:'中近景', en:'medium close-up, chest up', ds:'胸上，情緒＋手部', risk:0, svg:()=>W(figure(80,30,2.1))},
+  {k:'cu', zh:'近景', en:'close-up, shoulders up', ds:'肩上，表情主導', risk:0, svg:()=>W(figure(80,38,3))},
+  {k:'bcu', zh:'特寫', en:'tight close-up on the face', ds:'只有臉，最穩最有戲', risk:0, svg:()=>W(figure(80,50,4.5))},
+  {k:'ecu', zh:'大特寫', en:'extreme close-up on the eyes', ds:'眼睛或物件細節', risk:0, svg:()=>W(figure(80,62,12))}
+ ]},
+ {id:'angle', title:'機位角度', hint:'鏡頭從哪個高度、方向看', items:[
+  {k:'eye', zh:'平視', en:'eye-level angle', ds:'中性、客觀', risk:0, svg:()=>W(floor+figure(115,22,.7)+cam(32,22)+sight(48,22,104,22))},
+  {k:'low', zh:'低角度仰拍', en:'low-angle shot looking up', ds:'人物強勢、有壓迫感', risk:0, svg:()=>W(floor+figure(115,22,.7)+cam(36,76,-35)+sight(46,68,108,26))},
+  {k:'high', zh:'高角度俯拍', en:'high-angle shot looking down', ds:'人物弱勢、渺小', risk:0, svg:()=>W(floor+figure(115,30,.62)+cam(36,12,30)+sight(48,20,108,40))},
+  {k:'top', zh:'正頂拍', en:'top-down overhead shot', ds:'上帝視角、儀式感', risk:1, svg:()=>W(floor+figure(110,40,.5)+cam(110,10,90)+sight(110,22,110,34))},
+  {k:'dutch', zh:'荷蘭角', en:'dutch angle, tilted frame', ds:'不安、失衡', risk:0, svg:()=>W(`<g transform="rotate(-12 80 50)"><rect x="28" y="12" width="104" height="76" fill="#1a2132" stroke="#f0b354" stroke-width="1.2"/>${figure(80,32,1.6)}</g>`,'#0e1119')},
+  {k:'ots', zh:'過肩鏡', en:'over-the-shoulder shot', ds:'對話正反打必備', risk:0, svg:()=>W(figure(105,32,1.9)+`<path d="M-10,100 L-10,40 Q10,28 42,40 Q60,52 62,100Z" fill="#1c1f27" filter="url(#blur3)"/><circle cx="18" cy="26" r="24" fill="#18130f" filter="url(#blur3)"/>`)},
+  {k:'pov', zh:'主觀鏡', en:'POV shot from the character’s eyes', ds:'觀眾代入角色', risk:1, svg:()=>W(figure(80,28,1.7)+`<rect width="160" height="100" fill="none" stroke="#000" stroke-width="22" opacity=".55" filter="url(#blur3)"/>`+txt(20,14,'POV',9,'#f0b354'))}
+ ]},
+ {id:'move', title:'運鏡（只選一種）', hint:'鏡頭本身怎麼動；動得越複雜越容易變形', items:[
+  {k:'fixed', zh:'固定鏡頭', en:'locked-off static camera', ds:'最穩，讓表演說話', risk:0, svg:()=>W(topHead(112,50)+cam(45,50)+`<path d="M38,60 L32,74 M45,60 L45,76 M52,60 L58,74" stroke="#9097a6" stroke-width="1.4"/>`+txt(80,92,'不動'),'#121620')},
+  {k:'push', zh:'極緩慢推近', en:'very slow push-in', ds:'情緒逐步加壓', risk:1, svg:()=>W(topHead(118,50)+cam(40,50)+arrow('M60,50 L92,50'),'#121620')},
+  {k:'pull', zh:'緩慢拉遠', en:'slow pull-back', ds:'揭示環境、孤立感', risk:1, svg:()=>W(topHead(118,50)+cam(70,50)+arrow('M54,50 L18,50'),'#121620')},
+  {k:'truck', zh:'橫移', en:'slow lateral tracking (truck)', ds:'平行跟著空間走', risk:1, svg:()=>W(topHead(118,50)+`<g opacity=".3">${cam(45,22)}</g>`+cam(45,72)+arrow('M30,64 L30,28'),'#121620')},
+  {k:'pan', zh:'搖鏡', en:'slow pan', ds:'鏡頭原地轉向', risk:1, svg:()=>W(topHead(118,50)+cam(50,50)+arrow('M70,30 A28,28 0 0 1 70,70',1.6),'#121620')},
+  {k:'crane', zh:'升鏡', en:'slow crane up', ds:'由低到高揭示', risk:2, svg:()=>W(floor+figure(115,22,.7)+cam(42,74)+arrow('M26,76 L26,24')+`<g opacity=".3">${cam(42,24)}</g>`)},
+  {k:'craneDown', zh:'降鏡', en:'slow crane down', ds:'由高到低、收回人物', risk:2, svg:()=>W(floor+figure(115,22,.7)+cam(42,24)+arrow('M26,22 L26,74')+`<g opacity=".3">${cam(42,74)}</g>`)},
+  {k:'follow', zh:'跟拍', en:'tracking shot following the subject', ds:'人走鏡頭跟', risk:2, svg:()=>W(topHead(105,50)+cam(50,50)+arrow('M100,30 L140,30')+arrow('M40,72 L80,72'),'#121620')},
+  {k:'orbit', zh:'環繞', en:'slow orbit around the subject', ds:'氣勢強，但易變臉', risk:3, svg:()=>W(`<circle cx="110" cy="50" r="40" fill="none" stroke="#3a4152" stroke-dasharray="3 3"/>`+topHead(110,50)+cam(70,50)+arrow('M72,34 A40,40 0 0 1 110,10',1.8),'#121620')},
+  {k:'hand', zh:'手持輕晃', en:'subtle handheld camera', ds:'紀實、緊張', risk:2, svg:()=>W(topHead(118,50)+cam(55,50)+`<path d="M10,50 q5,-7 10,0 t10,0 t10,0" stroke="#f0b354" stroke-width="1.6" fill="none"/>`,'#121620')}
+ ]},
+ {id:'lens', title:'焦段／景深', hint:'電影感最便宜的來源，不增加動作負荷', items:[
+  {k:'24', zh:'24mm 廣角', en:'24mm wide-angle lens, deep focus', ds:'空間大、有張力', risk:0, svg:()=>W(cam(22,50)+`<path d="M36,50 L160,0 L160,100Z" fill="#f0b354" opacity=".12"/>`+figure(110,40,.5)+txt(130,94,'視角寬'))},
+  {k:'35', zh:'35mm 敘事', en:'35mm lens, natural perspective', ds:'最接近電影常用', risk:0, svg:()=>W(cam(22,50)+`<path d="M36,50 L160,12 L160,88Z" fill="#f0b354" opacity=".12"/>`+figure(110,36,.6))},
+  {k:'50', zh:'50mm 標準', en:'50mm lens', ds:'像人眼，自然', risk:0, svg:()=>W(cam(22,50)+`<path d="M36,50 L160,22 L160,78Z" fill="#f0b354" opacity=".12"/>`+figure(110,32,.7))},
+  {k:'85', zh:'85mm 淺景深', en:'85mm lens, shallow depth of field, creamy bokeh', ds:'人像首選，背景化開', risk:0, svg:()=>W(`<g filter="url(#blur3)"><circle cx="30" cy="30" r="9" fill="#f6d28a" opacity=".6"/><circle cx="135" cy="22" r="11" fill="#8ab6ff" opacity=".5"/><circle cx="125" cy="70" r="8" fill="#ff9ec7" opacity=".45"/><circle cx="40" cy="75" r="10" fill="#f6d28a" opacity=".4"/></g>`+figure(80,40,3))},
+  {k:'135', zh:'135mm 長焦', en:'135mm telephoto lens, compressed background', ds:'背景壓扁貼近、偷窺感', risk:0, svg:()=>W(`<g filter="url(#blur1)"><rect x="0" y="20" width="160" height="60" fill="#2c3550"/><rect x="10" y="10" width="26" height="70" fill="#3a4566"/><rect x="60" y="14" width="30" height="66" fill="#34405e"/><rect x="118" y="8" width="34" height="72" fill="#3a4566"/></g>`+figure(80,42,2.6))},
+  {k:'macro', zh:'微距', en:'macro lens, extreme detail', ds:'物件／道具細節', risk:0, svg:()=>W(`<circle cx="80" cy="50" r="30" fill="none" stroke="#f0b354" stroke-width="3"/><circle cx="80" cy="50" r="22" fill="#3b2f20"/><path d="M68,44 Q80,30 92,44" stroke="#f6d28a" stroke-width="2" fill="none"/><circle cx="80" cy="52" r="6" fill="#f6d28a"/>`)}
+ ]},
+ {id:'comp', title:'構圖', hint:'人物放在畫面哪裡', items:[
+  {k:'thirds', zh:'三分法', en:'rule-of-thirds composition', ds:'人物在交點，留視線空間', risk:0, svg:()=>W(figure(108,34,1.6)+`<g stroke="#f0b354" stroke-width=".6" opacity=".6"><line x1="53" y1="0" x2="53" y2="100"/><line x1="107" y1="0" x2="107" y2="100"/><line x1="0" y1="33" x2="160" y2="33"/><line x1="0" y1="67" x2="160" y2="67"/></g>`)},
+  {k:'center', zh:'中心對稱', en:'centered symmetrical composition', ds:'儀式感、對峙', risk:0, svg:()=>W(`<rect x="10" y="0" width="16" height="100" fill="#1c2232"/><rect x="134" y="0" width="16" height="100" fill="#1c2232"/>`+floor+figure(80,20,.9))},
+  {k:'fg', zh:'前景遮擋', en:'foreground framing with soft out-of-focus elements', ds:'偷看感、層次', risk:0, svg:()=>W(figure(105,30,1.8)+`<path d="M0,0 L50,0 Q40,50 58,100 L0,100Z" fill="#1a1411" filter="url(#blur3)"/>`)},
+  {k:'frame', zh:'框中框', en:'frame within a frame (doorway)', ds:'困住、窺視', risk:0, svg:()=>W(`<rect width="160" height="100" fill="#151a26"/><rect x="55" y="10" width="50" height="80" fill="#2b3550"/>`+figure(80,30,.7)+`<rect x="55" y="10" width="50" height="80" fill="none" stroke="#0a0c11" stroke-width="5"/>`)},
+  {k:'neg', zh:'大量留白', en:'negative space, subject small in the corner', ds:'孤獨、壓抑', risk:0, svg:()=>W(floor+figure(28,58,.3))},
+  {k:'lead', zh:'引導線', en:'leading lines converging on the subject', ds:'視線被帶到人物', risk:0, svg:()=>W(`<g stroke="#3a4566" stroke-width="2"><line x1="0" y1="100" x2="80" y2="45"/><line x1="160" y1="100" x2="80" y2="45"/><line x1="0" y1="0" x2="80" y2="45"/><line x1="160" y1="0" x2="80" y2="45"/></g>`+figure(80,36,.4))}
+ ]},
+ {id:'light', title:'光線', hint:'寫清楚光從哪裡來（有光源依據）', items:[
+  {k:'window', zh:'窗光側光', en:'soft window side light', ds:'自然、文藝', risk:0, svg:()=>W(`<rect x="4" y="12" width="34" height="50" fill="#e9f1ff" opacity=".85"/><path d="M21,12 V62 M4,37 H38" stroke="#26314a" stroke-width="2"/>`+face()+`<circle cx="80" cy="52" r="30" fill="url(#lSide)"/>`)},
+  {k:'rembrandt', zh:'林布蘭光', en:'Rembrandt lighting with a triangle of light on the shadow cheek', ds:'經典戲劇人像', risk:0, svg:()=>W(face()+`<circle cx="80" cy="52" r="30" fill="url(#lSide)"/><path d="M90,52 L99,50 L92,62Z" fill="#e6c7a8" opacity=".8"/>`)},
+  {k:'back', zh:'逆光剪影', en:'strong backlight, silhouette with rim light', ds:'神秘、登場感', risk:0, svg:()=>W(`<circle cx="80" cy="45" r="55" fill="url(#glow)"/><g transform="translate(80,52)"><path d="M-36,48 Q-34,32 0,30 Q34,32 36,48Z" fill="#111"/><circle r="30" fill="#141418" stroke="#fff3d6" stroke-width="1.6"/></g>`,'#2a2418')},
+  {k:'topl', zh:'頂光', en:'hard top light, deep eye shadows', ds:'冷酷、審訊感', risk:0, svg:()=>W(`<path d="M60,0 L100,0 L120,100 L40,100Z" fill="url(#beam)" opacity=".5"/>`+face()+`<circle cx="80" cy="52" r="30" fill="url(#lTop)"/>`,'#0a0b10')},
+  {k:'under', zh:'暖色低位光', en:'warm low-key light from below, like candlelight', ds:'私密、危險', risk:0, svg:()=>W(`<circle cx="80" cy="100" r="50" fill="url(#warmGlow)"/>`+face()+`<circle cx="80" cy="52" r="30" fill="url(#lUnder)"/>`,'#0b0806')},
+  {k:'neon', zh:'霓虹混色光', en:'mixed neon lighting, magenta and cyan', ds:'都市、夜店', risk:0, svg:()=>W(face()+`<circle cx="80" cy="52" r="30" fill="url(#lNeonL)"/><circle cx="80" cy="52" r="30" fill="url(#lNeonR)"/><rect x="2" y="10" width="6" height="60" fill="#ff3fa4"/><rect x="152" y="10" width="6" height="60" fill="#29d3ff"/>`,'#0d0a16')},
+  {k:'stage', zh:'舞台背光＋煙霧', en:'stage backlights cutting through haze', ds:'選秀、MV 必用', risk:0, svg:()=>W(`<g opacity=".9"><path d="M20,0 L34,0 L70,100 L40,100Z" fill="url(#beam)"/><path d="M73,0 L87,0 L96,100 L64,100Z" fill="url(#beam)"/><path d="M126,0 L140,0 L120,100 L90,100Z" fill="url(#beam)"/></g><rect y="60" width="160" height="40" fill="#8a7fb0" opacity=".25" filter="url(#blur3)"/>`+figure(80,30,1.2,'#2a2a44'),'#07060c')},
+  {k:'soft', zh:'柔和陰天光', en:'soft diffused overcast light', ds:'平實、日常', risk:0, svg:()=>W(face()+`<circle cx="80" cy="52" r="30" fill="url(#lSoft)"/>`,'#3a4250')}
+ ]},
+ {id:'grade', title:'色調', hint:'整體調色方向', items:[]},
+ {id:'act', title:'表演（只選一個微動作）', hint:'臉上的戲最穩，也最有電影感', items:[
+  {k:'lookup', zh:'抬眼看向對方', en:'slowly raises her eyes to look at the other person', ds:'', risk:0, svg:()=>W(face({pdy:-1.6,brow:'flat'}))},
+  {k:'stare', zh:'停頓凝視', en:'holds a still, steady gaze', ds:'', risk:0, svg:()=>W(face())},
+  {k:'smirk', zh:'嘴角微揚', en:'the corner of her mouth lifts slightly', ds:'', risk:0, svg:()=>W(face({mouth:'smirk'}))},
+  {k:'cold', zh:'眼神轉冷', en:'her gaze turns cold, eyes narrowing slightly', ds:'', risk:0, svg:()=>W(face({ry:1.8,brow:'knit'}))},
+  {k:'down', zh:'低頭垂眸', en:'lowers her gaze', ds:'', risk:0, svg:()=>W(face({closed:true,dy:4,brow:'sad'}))},
+  {k:'turn', zh:'微轉頭看向畫外', en:'turns her head slightly to look off-screen', ds:'', risk:1, svg:()=>W(face({pdx:3,tilt:-8,dx:-4}))},
+  {k:'tear', zh:'眼眶泛淚', en:'eyes welling up with tears', ds:'', risk:1, svg:()=>W(face({brow:'sad',mouth:'sad',tear:true}))},
+  {k:'bite', zh:'咬唇隱忍', en:'presses her lips together, holding back', ds:'', risk:0, svg:()=>W(face({mouth:'press',brow:'knit'}))},
+  {k:'breath', zh:'深吸一口氣', en:'takes a slow, deep breath', ds:'', risk:0, svg:()=>W(face({mouth:'small'})+`<path d="M60,96 Q80,84 100,96" stroke="#f0b354" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>`)},
+  {k:'shock', zh:'驚訝睜眼', en:'eyes widen in shock', ds:'', risk:1, svg:()=>W(face({ry:4.4,brow:'up',mouth:'open'}))}
+ ]},
+ {id:'body', title:'身體動作（高風險，能省就省）', hint:'AI 最容易崩的部分；建議拆鏡、切在動作中途或放到畫外', items:[]}
+];
+
+/* color grades */
+const GR = [
+ ['teal','青橙電影感','teal and orange cinematic color grade',['#0f3b46','#1f6f78','#e0a15e','#f4c78a']],
+ ['warmcold','冷暖對比','warm-cool contrast grade',['#1b2a4a','#3d5a8a','#e8a35a','#ffd9a0']],
+ ['desat','低飽和灰調','desaturated muted tones',['#3a3d40','#6d6f70','#a39d94','#cfc9be']],
+ ['gold','暖金懷舊','warm golden vintage tones',['#3b2412','#8a5a2b','#d9a45b','#f3dfb0']],
+ ['night','冷藍夜色','cold blue night tones',['#05070f','#0e1d3a','#2a4f80','#7fa6d6']],
+ ['bw','高對比黑白','high-contrast black and white',['#000000','#333333','#999999','#ffffff']],
+ ['idol','粉紫夢幻','dreamy pink and violet tones',['#2a1238','#7b3f8c','#e07bb5','#ffd1ea']],
+ ['natural','自然寫實','natural realistic color',['#2f3a2c','#6b7a57','#c8b89a','#efe6d6']]
+];
+CATS.find(c=>c.id==='grade').items = GR.map(([k,zh,en,c])=>({k,zh,en,ds:'',risk:0,svg:()=>W(
+  `<defs></defs><rect x="0" y="0" width="160" height="70" fill="${c[1]}"/><rect x="0" y="0" width="80" height="70" fill="${c[0]}" opacity=".7"/><circle cx="110" cy="34" r="22" fill="${c[2]}" opacity=".85"/><circle cx="110" cy="34" r="10" fill="${c[3]}"/>`+
+  c.map((col,i)=>`<rect x="${i*40}" y="72" width="40" height="28" fill="${col}"/>`).join(''))}));
+
+/* body actions */
+const twoFig = (extra) => W(floor+figure(55,24,.66)+figure(105,24,.66,'#a86a7f')+extra);
+CATS.find(c=>c.id==='body').items = [
+ {k:'none', zh:'無（建議）', en:'', ds:'身體保持靜止', risk:0, svg:()=>W(floor+figure(80,14,.85)+`<circle cx="130" cy="22" r="12" fill="none" stroke="#6fcf97" stroke-width="2"/><path d="M124,22 L129,27 L137,17" stroke="#6fcf97" stroke-width="2.4" fill="none"/>`)},
+ {k:'stand', zh:'起身／坐下', en:'stands up slowly from the chair', ds:'拆成兩鏡較穩', risk:2, svg:()=>W(floor+figure(80,14,.85)+arrow('M120,70 L120,22'))},
+ {k:'turnb', zh:'轉身', en:'turns around', ds:'易換臉、換衣服', risk:2, svg:()=>W(floor+figure(80,14,.85)+arrow('M58,40 A24,10 0 1 0 102,40',1.6))},
+ {k:'walk', zh:'走向／走開', en:'walks slowly toward the camera', ds:'步伐易怪', risk:2, svg:()=>W(floor+figure(70,14,.85)+arrow('M100,60 L140,60'))},
+ {k:'hold', zh:'拿起／遞出物件', en:'picks up the object', ds:'手和道具最易崩', risk:3, svg:()=>W(floor+figure(70,14,.85)+`<rect x="98" y="50" width="12" height="16" rx="2" fill="#f6d28a"/>`+arrow('M90,58 L96,58',1.4))},
+ {k:'touch', zh:'觸碰／牽手', en:'gently touches the other person’s hand', ds:'多人接觸', risk:3, svg:()=>twoFig(`<circle cx="80" cy="58" r="6" fill="none" stroke="#f0b354" stroke-width="1.5"/>`)},
+ {k:'hug', zh:'擁抱', en:'they embrace', ds:'肢體融合風險高', risk:4, svg:()=>W(floor+figure(72,24,.66)+figure(88,24,.66,'#a86a7f'))},
+ {k:'fight', zh:'推撞／打鬥', en:'shoves the other person', ds:'建議改畫外＋反應鏡', risk:5, svg:()=>twoFig(`<path d="M80,30 L84,42 L94,40 L86,48 L92,58 L80,52 L70,60 L74,48 L64,42 L76,42Z" fill="#eb5757"/>`)}
+];
+
+const BAN = [
+ ['不轉身','does not turn around'],['不起身','does not stand up'],['不觸碰他人','no physical contact'],
+ ['手部靜止或在畫外','hands stay still or out of frame'],['不開口說話','mouth stays closed, no speaking'],
+ ['背景人物保持靜止','background extras stay still'],['服裝髮型不變','costume and hair unchanged'],
+ ['畫面無文字字幕','no on-screen text or subtitles'],['不變臉、五官一致','consistent facial features, no face morphing']
+];
+const DUR = [3,4,5,6,8,10,12,15];
+
+
+
+/* ---------- Sound categories ---------- */
+const SBG='#10141c';
+const wave=(d,c='#7fb3ff',w=2)=>`<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`;
+const noise=(y,amp,c)=>{let d=`M8,${y}`;for(let x=8;x<=152;x+=4){d+=` L${x},${y+(Math.sin(x*1.7)+Math.sin(x*.63))*amp}`;}return wave(d,c,1.4);};
+const lbl=(t,x=80,y=92)=>txt(x,y,t,9,'#c9d2e3');
+const spike=(x,h,c='#f0b354')=>`<path d="M${x-10},60 L${x-3},60 L${x},${60-h} L${x+3},${60+h*.6} L${x+6},60 L${x+16},60" stroke="${c}" stroke-width="2.2" fill="none"/>`;
+const notes=(c)=>`<g fill="${c}"><ellipse cx="62" cy="62" rx="7" ry="5"/><ellipse cx="96" cy="56" rx="7" ry="5"/><rect x="67" y="26" width="3" height="36"/><rect x="101" y="20" width="3" height="36"/><path d="M67,26 L104,20 L104,28 L67,34Z"/></g>`;
+const track=(y,blocks,c)=>blocks.map(([x,w,t])=>`<rect x="${x}" y="${y}" width="${w}" height="16" rx="3" fill="${c}" opacity=".85"/>${t?txt(x+w/2,y+11,t,8,'#0b0d12'):''}`).join('');
+const tl=(vid,aud,extra='')=>W(`${txt(14,30,'畫',8)}${txt(14,62,'聲',8)}${track(20,vid,'#6a7fa8')}${track(52,aud,'#f0b354')}<line x1="80" y1="12" x2="80" y2="78" stroke="#eb5757" stroke-dasharray="3 3"/>${extra}`,SBG);
+CATS.push(
+ {id:'amb', title:'聲音①：環境底聲', hint:'先建立空間感；同一場戲跨鏡保持，不要每鏡換', items:[
+  {k:'room', zh:'室內安靜底噪', en:'quiet indoor room tone', ds:'冷氣聲、遠處車聲', risk:0, svg:()=>W(noise(55,2,'#7fb3ff')+lbl('低而平均'),SBG)},
+  {k:'street', zh:'夜街車流', en:'night street ambience with distant traffic', ds:'交代畫外城市', risk:0, svg:()=>W(noise(55,6,'#7fb3ff')+`<rect x="20" y="70" width="18" height="6" fill="#3a4566"/><rect x="110" y="70" width="24" height="6" fill="#3a4566"/>`+lbl('起伏中等'),SBG)},
+  {k:'cafe', zh:'咖啡廳／餐廳人聲（Walla）', en:'busy cafe and restaurant walla, indistinct chatter and cutlery', ds:'聽不清內容的人聲', risk:0, svg:()=>W(noise(45,5,'#9fd3a8')+noise(62,4,'#7fb3ff')+lbl('多層人聲'),SBG)},
+  {k:'rain', zh:'雨聲', en:'steady rain ambience', ds:'壓抑、孤獨', risk:0, svg:()=>W(`<g stroke="#7fb3ff" stroke-width="1.5">${Array.from({length:14},(_,i)=>`<line x1="${12+i*10}" y1="${20+(i%3)*8}" x2="${6+i*10}" y2="${40+(i%3)*8}"/>`).join('')}</g>`+noise(66,2,'#7fb3ff')+lbl('持續沙沙'),SBG)},
+  {k:'wind', zh:'山野風聲／蟲鳴', en:'night wind and insects in the wild', ds:'空曠、古裝', risk:0, svg:()=>W(wave('M10,50 Q40,30 70,50 T130,50 T160,45','#9fd3a8')+wave('M10,62 Q50,48 90,62 T160,60','#7fb3ff',1.4)+lbl('慢慢起伏'),SBG)},
+  {k:'set', zh:'片場嘈雜', en:'busy film set ambience, crew chatter, equipment moving', ds:'工作人員、器材', risk:0, svg:()=>W(noise(55,8,'#f0b354')+lbl('雜而忙'),SBG)},
+  {k:'silent', zh:'靜默留白', en:'near silence, only faint room tone', ds:'留給揭示與笑點', risk:0, svg:()=>W(wave('M8,55 L152,55','#3a4566')+lbl('幾乎無聲'),SBG)}
+ ]},
+ {id:'foley', title:'聲音②：動作擬音', hint:'只配「會改變局勢」的接觸點；寫清楚哪個動作、哪一刻出聲', items:[
+  {k:'step', zh:'腳步聲', en:'footsteps synced to each step', ds:'按步伐落地', risk:0, svg:()=>W(spike(40,14,'#9fd3a8')+spike(80,14,'#9fd3a8')+spike(120,14,'#9fd3a8')+lbl('每步一下'),SBG)},
+  {k:'cloth', zh:'布料摩擦', en:'soft cloth rustle as they move', ds:'轉身、拉被、試衫', risk:0, svg:()=>W(noise(55,4,'#c9b8ff')+lbl('輕、短'),SBG)},
+  {k:'cup', zh:'杯碗碰桌', en:'a cup clinks down on the table at the moment of contact', ds:'放下一刻', risk:0, svg:()=>W(spike(80,28)+lbl('一下清脆'),SBG)},
+  {k:'door', zh:'開關門', en:'door handle click and door swing', ds:'人物進出', risk:0, svg:()=>W(spike(55,16)+noise(60,2,'#7fb3ff').replace('M8','M75')+lbl('咔＋拖尾'),SBG)},
+  {k:'phone', zh:'手機提示／震動', en:'a phone notification chime, then vibration', ds:'先聲後看手機', risk:0, svg:()=>W(`<rect x="66" y="22" width="28" height="48" rx="5" fill="none" stroke="#f0b354" stroke-width="2"/><path d="M56,36 l-6,-4 M56,46 h-8 M104,36 l6,-4 M104,46 h8" stroke="#f0b354" stroke-width="2"/>`+lbl('先聲音觸發'),SBG)},
+  {k:'paper', zh:'紙張翻動', en:'paper rustling as the script page turns', ds:'翻劇本、信件', risk:0, svg:()=>W(noise(55,5,'#e9e6df')+lbl('沙一聲'),SBG)},
+  {k:'hit', zh:'打擊／撞擊', en:'a heavy impact sound exactly on the hit', ds:'武戲接觸點', risk:0, svg:()=>W(spike(80,34,'#eb5757')+lbl('重、短、準'),SBG)}
+ ]},
+ {id:'sfx', title:'聲音③：特殊音效', hint:'少量點綴，用來強調轉折；不要每鏡都有', items:[
+  {k:'magic', zh:'變身／魔法音', en:'a shimmering magical transformation sound', ds:'變身、穿越', risk:0, svg:()=>W(wave('M10,70 C50,70 70,20 150,22','#c9b8ff',2.4)+`<g fill="#f6d28a"><circle cx="120" cy="30" r="3"/><circle cx="138" cy="40" r="2"/><circle cx="100" cy="24" r="2"/></g>`+lbl('上揚閃爍'),SBG)},
+  {k:'heart', zh:'心跳聲', en:'a slow heartbeat that builds tension', ds:'緊張、心動', risk:0, svg:()=>W(wave('M8,55 L40,55 L46,40 L52,68 L58,55 L95,55 L101,40 L107,68 L113,55 L152,55','#eb5757',2)+lbl('砰砰'),SBG)},
+  {k:'whoosh', zh:'轉場咻聲', en:'a quick whoosh on the cut', ds:'快切、帶入近景', risk:0, svg:()=>W(wave('M10,60 Q80,60 150,30','#7fb3ff',3)+wave('M10,66 Q80,66 150,40','#7fb3ff',1.4)+lbl('咻'),SBG)},
+  {k:'sting', zh:'重擊定格', en:'a sharp comedic sting on the reaction', ds:'笑點、反轉', risk:0, svg:()=>W(spike(80,36,'#f0b354')+`<rect x="100" y="24" width="40" height="30" fill="none" stroke="#f0b354" stroke-dasharray="3 2"/>`+lbl('咚＋定格'),SBG)},
+  {k:'rewind', zh:'倒帶音', en:'a tape rewind sound into the flashback', ds:'倒敘「三十分鐘前」', risk:0, svg:()=>W(`<path d="M120,30 L90,50 L120,70Z M85,30 L55,50 L85,70Z" fill="#7fb3ff"/>`+lbl('倒敘入口'),SBG)}
+ ]},
+ {id:'music', title:'聲音④：配樂處理', hint:'寫清楚配樂在哪個畫面事件進、退、回', items:[
+  {k:'none', zh:'無配樂', en:'no background music', ds:'寫實、讓對白清楚', risk:0, svg:()=>W(notes('#3a4566')+`<line x1="40" y1="20" x2="120" y2="80" stroke="#eb5757" stroke-width="3"/>`+lbl('不加'),SBG)},
+  {k:'comedy', zh:'輕快喜劇', en:'light playful comedy music, low under dialogue', ds:'日常、搞笑', risk:0, svg:()=>W(notes('#9fd3a8')+lbl('跳躍輕快'),SBG)},
+  {k:'tender', zh:'溫柔親密', en:'soft warm piano, very low', ds:'感情戲', risk:0, svg:()=>W(notes('#f6c1d9')+lbl('柔、慢'),SBG)},
+  {k:'tense', zh:'緊張懸疑', en:'low tense suspense drone', ds:'危機、對峙', risk:0, svg:()=>W(notes('#eb5757')+lbl('低沉持續'),SBG)},
+  {k:'reveal', zh:'揭曉反轉', en:'a reveal music hit on the twist', ds:'真相大白', risk:0, svg:()=>W(notes('#f0b354')+lbl('一下推高'),SBG)},
+  {k:'drop', zh:'關鍵句前停樂', en:'music cuts out just before the key line, leaving silence', ds:'碰桌→停樂→質問', risk:0, svg:()=>tl([[20,60,'碰桌'],[84,60,'質問']],[[20,56,'配樂']])},
+  {k:'back', zh:'台詞後配樂回來', en:'music returns on the listener\'s reaction after the line', ds:'接聽者反應', risk:0, svg:()=>tl([[20,60,'台詞'],[84,60,'反應']],[[84,60,'配樂回']])}
+ ]},
+ {id:'voice', title:'聲音⑤：人聲處理', hint:'誰在說、角色聽不聽得到、嘴要不要動', items:[
+  {k:'sync', zh:'同期對白', en:'on-screen dialogue with lip sync', ds:'嘴型對上', risk:1, svg:()=>W(`<ellipse cx="60" cy="52" rx="16" ry="10" fill="#5a2a22"/>`+wave('M90,52 q6,-12 12,0 t12,0 t12,0','#f0b354')+lbl('嘴動＋聲'),SBG)},
+  {k:'off', zh:'畫外音', en:'off-screen voice, the speaker is not in frame', ds:'拍聆聽者反應', risk:0, svg:()=>W(`<rect x="30" y="20" width="70" height="56" fill="none" stroke="#6a7fa8" stroke-width="2"/>`+wave('M108,48 q6,-12 12,0 t12,0','#f0b354')+txt(130,30,'畫外',8,'#f0b354')+lbl('聲在框外'),SBG)},
+  {k:'inner', zh:'內心獨白（嘴不動）', en:'inner monologue voice-over with slight reverb, lips do not move', ds:'帶少許殘響', risk:0, svg:()=>W(`<path d="M50,30 h60 a10,10 0 0 1 10,10 v16 a10,10 0 0 1 -10,10 h-40 l-12,10 v-10 h-8 a10,10 0 0 1 -10,-10 v-16 a10,10 0 0 1 10,-10z" fill="none" stroke="#c9b8ff" stroke-width="2" stroke-dasharray="4 3"/>`+lbl('心聲'),SBG)},
+  {k:'narr', zh:'旁白', en:'calm narrator voice-over', ds:'交代背景', risk:0, svg:()=>W(`<rect x="70" y="24" width="20" height="32" rx="10" fill="#7fb3ff"/><path d="M62,46 a18,18 0 0 0 36,0 M80,64 v10" stroke="#7fb3ff" stroke-width="2" fill="none"/>`+lbl('敘述'),SBG)},
+  {k:'meow', zh:'喵聲（有情緒）', en:'a cat meow with clear emotion: short and rising when curious, long and falling when tired', ds:'寫長短與尾音', risk:0, svg:()=>W(wave('M20,60 Q40,40 60,35','#9fd3a8',3)+wave('M90,35 Q115,40 140,66','#f0b354',3)+txt(40,78,'短↑好奇',8,'#9fd3a8')+txt(118,78,'長↓無奈',8,'#f0b354'),SBG)},
+  {k:'mute', zh:'無人聲', en:'no voices', ds:'純畫面', risk:0, svg:()=>W(`<ellipse cx="80" cy="52" rx="16" ry="4" fill="#5a2a22"/>`+lbl('不說話'),SBG)}
+ ]},
+ {id:'bridge', title:'聲音⑥：聲畫銜接', hint:'切鏡時聲音怎樣過；生成時只寫本鏡，剪輯時處理跨鏡', items:[
+  {k:'cut', zh:'直接切', en:'clean cut, sound changes with the picture', ds:'最簡單', risk:0, svg:()=>tl([[20,58,'A'],[82,58,'B']],[[20,58,'A聲'],[82,58,'B聲']])},
+  {k:'jcut', zh:'J-cut 聲音先行', en:'J-cut: the next shot\'s sound starts before the cut', ds:'先聽到再看到', risk:0, svg:()=>tl([[20,58,'A'],[82,58,'B']],[[20,40,'A聲'],[62,78,'B聲先入']])},
+  {k:'lcut', zh:'L-cut 聲音延後', en:'L-cut: this shot\'s sound continues over the next shot', ds:'台詞跨到反應鏡', risk:0, svg:()=>tl([[20,58,'A'],[82,58,'B']],[[20,82,'A聲延續'],[104,36,'B']])},
+  {k:'carry', zh:'聲音跨鏡持續', en:'ambience and dialogue carry continuously across the cuts', ds:'同場戲底聲不斷', risk:0, svg:()=>tl([[20,40,'A'],[62,40,'B'],[104,36,'C']],[[20,120,'同一底聲']])},
+  {k:'gap', zh:'靜音留白', en:'a beat of silence before the reveal', ds:'揭示前停一拍', risk:0, svg:()=>tl([[20,58,'A'],[82,58,'揭示']],[[20,50,'聲'],[96,44,'聲']],`${txt(80,74,'靜',9,'#eb5757')}`)}
+ ]}
+);
+
+/* ---------- Universal Asset Library + Custom Assets (IndexedDB) ---------- */
+const ST = {'預設':'st-c','定稿':'st-a','母圖':'st-a','現行生成用':'st-b','通過':'st-b','自訂':'st-b','候選':'st-c','構圖參考':'st-c','待修':'st-d'};
+const svgUri = (w,h,body,bg='#121622') => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" rx="8" fill="${bg}"/>${body}</svg>`
+);
+const charCardSvg = (badge, coat, hair, skin='#e6c7a8', glasses=false, hat=false) => svgUri(160,120,
+  `<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#222a3f"/><stop offset="1" stop-color="#0f131d"/></linearGradient></defs>`+
+  `<rect width="160" height="120" rx="8" fill="url(#cg)"/>`+
+  `<circle cx="80" cy="52" r="42" fill="${coat}" opacity=".14"/>`+
+  `<path d="M38,120 Q42,84 80,82 Q118,84 122,120Z" fill="${coat}"/>`+
+  `<path d="M68,82 L80,95 L92,82" fill="#e9e6df" opacity=".85"/>`+
+  `<rect x="73" y="69" width="14" height="15" rx="4" fill="#d3b190"/>`+
+  `<circle cx="80" cy="50" r="22" fill="${skin}"/>`+
+  `<path d="M56,48 Q56,22 80,22 Q104,22 104,48 Q98,32 80,32 Q62,32 56,48Z" fill="${hair}"/>`+
+  (hat?`<path d="M56,38 Q80,20 104,38 L112,40 L48,40Z" fill="#4f7fb0"/>`:'')+
+  `<circle cx="72" cy="50" r="2.1" fill="#1a1a1a"/><circle cx="88" cy="50" r="2.1" fill="#1a1a1a"/>`+
+  (glasses?`<rect x="65" y="45" width="12" height="9" rx="2" fill="none" stroke="#d9dde6" stroke-width="1.5"/><rect x="83" y="45" width="12" height="9" rx="2" fill="none" stroke="#d9dde6" stroke-width="1.5"/><line x1="77" y1="49" x2="83" y2="49" stroke="#d9dde6" stroke-width="1.5"/>`:'')+
+  `<path d="M74,60 Q80,64 86,60" stroke="#9a5a4a" stroke-width="1.6" fill="none" stroke-linecap="round"/>`+
+  `<rect x="10" y="10" width="26" height="18" rx="6" fill="#0c0e13" stroke="${coat}" stroke-width="1.2"/><text x="23" y="22.5" font-size="10.5" font-weight="700" fill="#e9e6df" font-family="sans-serif" text-anchor="middle">${badge}</text>`
+);
+const catCardSvg = () => svgUri(160,120,
+  `<rect width="160" height="120" rx="8" fill="#161b28"/>`+
+  `<ellipse cx="80" cy="100" rx="44" ry="8" fill="#090c12"/>`+
+  `<path d="M104,92 Q126,90 124,70 Q122,58 112,64" stroke="#e09b52" stroke-width="6" fill="none" stroke-linecap="round"/>`+
+  `<ellipse cx="80" cy="80" rx="24" ry="18" fill="#e09b52"/>`+
+  `<ellipse cx="80" cy="84" rx="13" ry="11" fill="#f7dec0"/>`+
+  `<polygon points="62,38 58,20 74,32" fill="#e09b52"/><polygon points="98,38 102,20 86,32" fill="#e09b52"/>`+
+  `<polygon points="63,35 61,24 71,32" fill="#f2a7a0"/><polygon points="97,35 99,24 89,32" fill="#f2a7a0"/>`+
+  `<circle cx="80" cy="48" r="20" fill="#e09b52"/>`+
+  `<circle cx="72" cy="46" r="2.6" fill="#1a1a1a"/><circle cx="88" cy="46" r="2.6" fill="#1a1a1a"/>`+
+  `<polygon points="80,52 77,49 83,49" fill="#e87a7a"/>`+
+  `<path d="M74,55 Q80,58 80,53 Q80,58 86,55" stroke="#4a2c18" stroke-width="1.4" fill="none"/>`+
+  `<path d="M52,48 L65,50 M52,53 L65,53 M108,48 L95,50 M108,53 L95,53" stroke="#f7dec0" stroke-width="1.2" opacity=".8"/>`+
+  `<rect x="10" y="10" width="32" height="18" rx="6" fill="#0c0e13" stroke="#e09b52" stroke-width="1.2"/><text x="26" y="22.5" font-size="10" font-weight="700" fill="#f0b354" font-family="sans-serif" text-anchor="middle">PET</text>`
+);
+const sceneCardSvg = (kind) => {
+  if(kind==='home') return svgUri(120,160,
+    `<rect width="120" height="118" fill="#23293a"/><rect y="118" width="120" height="42" fill="#3a2f26"/>`+
+    `<rect x="14" y="18" width="44" height="54" rx="2" fill="#89a9cf" opacity=".75" stroke="#535d73" stroke-width="3"/>`+
+    `<line x1="36" y1="18" x2="36" y2="72" stroke="#535d73" stroke-width="2"/><line x1="14" y1="45" x2="58" y2="45" stroke="#535d73" stroke-width="2"/>`+
+    `<rect x="86" y="42" width="3" height="76" fill="#5b6270"/><polygon points="75,42 100,42 94,26 81,26" fill="#f0b354"/><circle cx="87" cy="48" r="24" fill="#f0b354" opacity=".18"/>`+
+    `<rect x="18" y="96" width="66" height="22" rx="4" fill="#5c718a"/><rect x="18" y="84" width="66" height="16" rx="4" fill="#6f87a3"/>`+
+    `<ellipse cx="60" cy="138" rx="38" ry="10" fill="#7d514c" opacity=".85"/>`
+  );
+  if(kind==='cafe') return svgUri(120,160,
+    `<rect width="120" height="114" fill="#28221e"/><rect y="114" width="120" height="46" fill="#3d3026"/>`+
+    `<line x1="32" y1="0" x2="32" y2="28" stroke="#888" stroke-width="1.5"/><polygon points="22,28 42,28 36,18 28,18" fill="#f0b354"/>`+
+    `<line x1="88" y1="0" x2="88" y2="28" stroke="#888" stroke-width="1.5"/><polygon points="78,28 98,28 92,18 84,18" fill="#f0b354"/>`+
+    `<circle cx="32" cy="44" r="26" fill="#f0b354" opacity=".15"/><circle cx="88" cy="44" r="26" fill="#f0b354" opacity=".15"/>`+
+    `<rect x="16" y="48" width="88" height="44" rx="3" fill="#1b2230" stroke="#6d523d" stroke-width="3"/>`+
+    `<rect x="26" y="96" width="68" height="6" rx="2" fill="#cfa670"/><rect x="57" y="102" width="6" height="32" fill="#4f4339"/>`+
+    `<rect x="52" y="85" width="16" height="11" rx="2" fill="#f5efe6"/>`
+  );
+  if(kind==='street') return svgUri(120,160,
+    `<rect width="120" height="106" fill="#192338"/><rect y="106" width="120" height="54" fill="#2c303a"/>`+
+    `<polygon points="48,106 72,106 105,160 15,160" fill="#3b4150"/>`+
+    `<line x1="60" y1="112" x2="60" y2="156" stroke="#f0b354" stroke-width="2" stroke-dasharray="6 5"/>`+
+    `<rect x="6" y="28" width="32" height="78" fill="#253047"/><rect x="82" y="20" width="32" height="86" fill="#202a3d"/>`+
+    `<g fill="#f0b354" opacity=".75"><rect x="14" y="40" width="6" height="8"/><rect x="24" y="40" width="6" height="8"/><rect x="14" y="56" width="6" height="8"/><rect x="90" y="34" width="7" height="9"/><rect x="102" y="34" width="7" height="9"/><rect x="90" y="52" width="7" height="9"/></g>`+
+    `<circle cx="78" cy="70" r="14" fill="#f0b354" opacity=".25"/><circle cx="78" cy="70" r="3" fill="#ffe3a3"/><rect x="77" y="72" width="2" height="34" fill="#6f788a"/>`
+  );
+  return svgUri(120,160,
+    `<rect width="120" height="116" fill="#1e2430"/><rect y="116" width="120" height="44" fill="#2c3340"/>`+
+    `<rect x="18" y="18" width="84" height="52" rx="3" fill="#344a66" stroke="#4f586b" stroke-width="3"/>`+
+    `<line x1="60" y1="18" x2="60" y2="70" stroke="#4f586b" stroke-width="2"/>`+
+    `<rect x="16" y="96" width="88" height="8" rx="2" fill="#9c7b56"/><rect x="22" y="104" width="6" height="28" fill="#4f5666"/><rect x="92" y="104" width="6" height="28" fill="#4f5666"/>`+
+    `<rect x="42" y="66" width="36" height="24" rx="2" fill="#111622" stroke="#6d82a8" stroke-width="2"/><rect x="57" y="90" width="6" height="6" fill="#6d82a8"/>`
+  );
+};
+const propCardSvg = (kind) => {
+  if(kind==='phone') return svgUri(160,120,
+    `<rect x="56" y="16" width="48" height="88" rx="9" fill="#1d2332" stroke="#7a89a8" stroke-width="2.5"/>`+
+    `<rect x="61" y="24" width="38" height="68" rx="4" fill="#2c4268"/>`+
+    `<rect x="72" y="19" width="16" height="2.5" rx="1.2" fill="#525d75"/>`+
+    `<rect x="67" y="34" width="26" height="12" rx="3" fill="#f0b354" opacity=".9"/>`+
+    `<rect x="67" y="52" width="20" height="5" rx="2" fill="#9fb8e0" opacity=".7"/><rect x="67" y="61" width="26" height="5" rx="2" fill="#9fb8e0" opacity=".5"/>`
+  );
+  if(kind==='cup') return svgUri(160,120,
+    `<path d="M70,32 Q66,24 72,18 M84,30 Q80,22 86,16 M96,33 Q92,25 97,20" stroke="#f0b354" stroke-width="2" fill="none" stroke-linecap="round" opacity=".75"/>`+
+    `<path d="M54,44 H102 L96,86 Q95,94 86,94 H70 Q61,94 60,86 Z" fill="#e9e6df"/>`+
+    `<path d="M101,52 H111 Q118,52 118,63 Q118,74 110,74 H99" fill="none" stroke="#e9e6df" stroke-width="5" stroke-linecap="round"/>`+
+    `<ellipse cx="78" cy="44" rx="24" ry="5" fill="#784a2a"/><ellipse cx="78" cy="96" rx="34" ry="5" fill="#8f98ab" opacity=".4"/>`
+  );
+  if(kind==='bag') return svgUri(160,120,
+    `<path d="M64,42 Q64,20 80,20 Q96,20 96,42" fill="none" stroke="#c98a4b" stroke-width="4.5" stroke-linecap="round"/>`+
+    `<polygon points="48,42 112,42 118,98 42,98" fill="#b8763c" stroke="#d89d62" stroke-width="1.5"/>`+
+    `<line x1="46" y1="54" x2="114" y2="54" stroke="#8f5524" stroke-width="2"/>`+
+    `<rect x="74" y="50" width="12" height="9" rx="2" fill="#f0b354"/>`
+  );
+  return svgUri(160,120,
+    `<g transform="rotate(-24 80 60)">`+
+    `<rect x="74" y="54" width="12" height="50" rx="4" fill="#3a4152" stroke="#6f788e" stroke-width="1.5"/>`+
+    `<circle cx="80" cy="40" r="15" fill="#6b7489" stroke="#aeb6c8" stroke-width="1.5"/>`+
+    `<line x1="66" y1="40" x2="94" y2="40" stroke="#2c313d" stroke-width="2.5"/>`+
+    `<circle cx="80" cy="70" r="2.5" fill="#f0b354"/></g>`+
+    `<path d="M44,30 Q36,42 44,54 M114,34 Q122,46 114,58" stroke="#f0b354" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>`
+  );
+};
+
+const LIB = {
+ default:{name:'通用預設', groups:[
+  {g:'角色', items:[
+   {id:'char-a', n:'主角 A', s:'預設', f:'通用角色模板 A', en:'Character A (lead)', thumb:charCardSvg('A','#e0773a','#2a2320')},
+   {id:'char-b', n:'主角 B', s:'預設', f:'通用角色模板 B', en:'Character B (co-lead)', thumb:charCardSvg('B','#5b7fd6','#382924')},
+   {id:'char-elder', n:'配角／長輩', s:'預設', f:'通用長輩角色模板', en:'supporting elder character', thumb:charCardSvg('長輩','#7f8fa6','#9da6b5','#e0bfa2',true)},
+   {id:'char-friend', n:'朋友', s:'預設', f:'通用朋友角色模板', en:'friend character', thumb:charCardSvg('友','#4fb07a','#2b2623','#e6c7a8',false,true)},
+   {id:'char-cat', n:'貓咪／寵物', s:'預設', f:'通用寵物角色模板', en:'cat / pet character', cat:true, thumb:catCardSvg()}
+  ]},
+  {g:'場景', scene:true, items:[
+   {id:'sc-home', n:'室內客廳／房間', s:'預設', f:'通用室內居家場景', en:'a cozy indoor living room', tall:true, thumb:sceneCardSvg('home')},
+   {id:'sc-cafe', n:'咖啡廳／餐廳', s:'預設', f:'通用咖啡廳／餐飲場景', en:'a warm cafe or restaurant interior', tall:true, thumb:sceneCardSvg('cafe')},
+   {id:'sc-street', n:'街頭／戶外', s:'預設', f:'通用戶外街道場景', en:'an outdoor city street', tall:true, thumb:sceneCardSvg('street')},
+   {id:'sc-office', n:'辦公室', s:'預設', f:'通用辦公室場景', en:'a modern office interior with a desk', tall:true, thumb:sceneCardSvg('office')}
+  ]},
+  {g:'道具', prop:true, items:[
+   {id:'pr-phone', n:'手機', s:'預設', f:'通用手機道具', en:'a smartphone', prop:true, thumb:propCardSvg('phone')},
+   {id:'pr-cup', n:'咖啡杯', s:'預設', f:'通用咖啡杯道具', en:'a coffee cup', prop:true, thumb:propCardSvg('cup')},
+   {id:'pr-bag', n:'手提袋', s:'預設', f:'通用手提袋道具', en:'a handbag or tote bag', prop:true, thumb:propCardSvg('bag')},
+   {id:'pr-mic', n:'麥克風', s:'預設', f:'通用麥克風道具', en:'a microphone', prop:true, thumb:propCardSvg('mic')}
+  ]}
+ ]}
+};
+const ASSET = {};
+function rebuildDefaultAssets(){
+  for(const k of Object.keys(ASSET)) if(!ASSET[k].custom) delete ASSET[k];
+  for(const p in LIB) for(const gr of LIB[p].groups) for(const it of gr.items){
+    ASSET[it.id]={...it, proj:p, scene:!!gr.scene, prop:!!(gr.prop||it.prop), group:gr.g, src:it.thumb};
+  }
+}
+rebuildDefaultAssets();
+
+/* ---------- Custom Assets IndexedDB (shotAssets / assets) ---------- */
+const AssetDB = {
+  db: null,
+  open(){
+    if(this.db) return Promise.resolve(this.db);
+    return new Promise((res,rej)=>{
+      try{
+        if(!window.indexedDB) throw new Error('no indexedDB');
+        const r = indexedDB.open('shotAssets', 1);
+        r.onupgradeneeded = ()=>{ const db=r.result; if(!db.objectStoreNames.contains('assets')) db.createObjectStore('assets',{keyPath:'id'}); };
+        r.onsuccess = ()=>{ this.db=r.result; res(r.result); };
+        r.onerror = ()=>rej(r.error||new Error('idb'));
+        r.onblocked = ()=>rej(new Error('blocked'));
+      }catch(e){ rej(e); }
+    });
+  },
+  async tx(mode,fn){
+    const db = await this.open();
+    return new Promise((res,rej)=>{
+      const t = db.transaction('assets', mode), st = t.objectStore('assets');
+      let out; const rq = fn(st); if(rq) rq.onsuccess = ()=>{ out=rq.result; };
+      t.oncomplete = ()=>res(out);
+      t.onerror = ()=>rej(t.error);
+      t.onabort = ()=>rej(t.error||new Error('abort'));
+    });
+  },
+  put(rec){ return this.tx('readwrite', st=>st.put(rec)); },
+  get(id){ return this.tx('readonly', st=>st.get(id)); },
+  getAll(){ return this.tx('readonly', st=>st.getAll()); },
+  del(id){ return this.tx('readwrite', st=>st.delete(id)); }
+};
+
+let CUSTOM_LIST = [];
+const CUSTOM_URLS = {};
+function fallbackEn(name, group){
+  if(group==='場景') return `the location ${name}`;
+  if(group==='道具') return `the prop ${name}`;
+  return `the character ${name}`;
+}
+function registerCustomRec(rec){
+  if(CUSTOM_URLS[rec.id]){ try{ URL.revokeObjectURL(CUSTOM_URLS[rec.id]); }catch(_){} }
+  const src = rec.blob ? URL.createObjectURL(rec.blob) : (rec.thumb||'');
+  if(rec.blob) CUSTOM_URLS[rec.id] = src;
+  const grp = rec.group||'角色';
+  const item = {
+    id: rec.id, n: rec.n, en: (rec.en||'').trim() || fallbackEn(rec.n, grp),
+    s: (rec.s||'').trim() || '自訂', f: rec.f || '本機自訂上傳素材',
+    group: grp, scene: grp==='場景', prop: grp==='道具', cat: !!rec.cat,
+    tall: grp==='場景', custom: true, src, thumb: rec.thumb || src, proj: 'default'
+  };
+  ASSET[item.id] = item;
+  return item;
+}
+async function loadCustomAssets(){
+  try{
+    const list = (await AssetDB.getAll()) || [];
+    list.sort((a,b)=>(a.created||0)-(b.created||0));
+    for(const k of Object.keys(ASSET)) if(ASSET[k].custom) delete ASSET[k];
+    CUSTOM_LIST = list.map(registerCustomRec);
+  }catch(e){
+    CUSTOM_LIST = [];
+  }
+  renderAssets();
+  updatePicked();
+}
+async function compressAssetImage(file){
+  const u = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error('圖片讀取失敗')); im.src=u; });
+    const draw = maxEdge=>{
+      const w0=img.naturalWidth||1, h0=img.naturalHeight||1, sc=Math.min(1, maxEdge/Math.max(w0,h0));
+      const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w0*sc)); c.height=Math.max(1,Math.round(h0*sc));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height); return c;
+    };
+    const cFull = draw(1024);
+    let blob = await new Promise(res=>cFull.toBlob(res,'image/webp',0.86));
+    if(!blob || blob.type!=='image/webp') blob = await new Promise(res=>cFull.toBlob(res,'image/jpeg',0.86));
+    const cThumb = draw(220);
+    let thumb = cThumb.toDataURL('image/webp',0.74);
+    if(!thumb.startsWith('data:image/webp')) thumb = cThumb.toDataURL('image/jpeg',0.74);
+    return {blob, thumb, w:cFull.width, h:cFull.height};
+  }finally{
+    URL.revokeObjectURL(u);
+  }
+}
+
+function assetEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderAssets(){
+  const lib = LIB[S.proj] || LIB.default;
+  let h = '';
+  for(const gr of lib.groups){
+    const customItems = CUSTOM_LIST.filter(c=>c.group===gr.g);
+    const items = gr.items.concat(customItems);
+    h += `<div class="agroup">${gr.g}${gr.scene?'（建議只選一個）':''}</div><div class="agrid">`;
+    for(const it of items){
+      const idx = S.assets.indexOf(it.id);
+      const imgSrc = it.src || it.thumb || '';
+      h += `<div class="acard${idx>=0?' sel':''}" data-aid="${assetEsc(it.id)}" role="button" tabindex="0"><div class="im${it.tall?' tall':''}"><img src="${assetEsc(imgSrc)}" alt="${assetEsc(it.n)}" loading="lazy"></div><span class="badge">圖片${idx+1}</span>${it.custom?`<button class="adel" type="button" data-del-asset="${assetEsc(it.id)}" title="刪除此自訂素材" aria-label="刪除 ${assetEsc(it.n)}">✕</button>`:''}<button class="zoom" type="button" data-zoom="${assetEsc(it.id)}" title="放大">⤢</button><div class="lb">${assetEsc(it.n)}</div><span class="st ${ST[it.s]||'st-c'}">${assetEsc(it.s)}</span></div>`;
+    }
+    h += `</div>`;
+  }
+  const body = document.getElementById('assetBody');
+  if(body) body.innerHTML = h;
+  const sum = document.getElementById('assetSummary');
+  if(sum) sum.textContent = `內建預設 13 項・自訂 ${CUSTOM_LIST.length} 項`;
+}
+function assetRefs(){ return S.assets.filter(id=>ASSET[id]).map((id,i)=>({i:i+1, a:ASSET[id]})); }
+
+/* ---------- State ---------- */
+const S = {sel:{}, ban:new Set(), dur:4, aspect:'9:16', f:{no:'S01',extra:'',content:'',line:'',next:'',section:'',beat:'',trans:'',mainAct:'',note:''}, proj:'default', assets:[], fmt:'struct'};
+
+/* ---------- Render categories ---------- */
+const catsEl = document.getElementById('cats');
+let n=1;
+function riskTag(r){ return `<span class="risk r${r}">風險 ${r}</span>`; }
+let html = `<section class="cat"><div class="cat-h"><span class="num">00</span><h2>鏡頭資料</h2><span class="hint">角色、場景、道具在下一區直接從素材庫選</span></div>
+<div class="fields">
+ <label class="f">鏡號<input type="text" data-f="no" value="S01"></label>
+ <label class="f">其他資產（素材庫以外，手動）<input type="text" data-f="extra" placeholder="例：@臨時道具 紅色紙袋"></label>
+ <label class="f">下一鏡銜接<input type="text" data-f="next" placeholder="切對方反應特寫"></label>
+</div>
+<div class="fields" style="margin-top:10px">
+ <label class="f">畫面內容補充（誰、在哪、狀態）<textarea data-f="content" placeholder="例：主角 A 坐在咖啡廳窗邊，拿著咖啡杯看向門外"></textarea></label>
+ <label class="f">台詞／歌詞（無對白可留空）<textarea data-f="line" placeholder="「這一次，輪到我了。」"></textarea></label>
+</div>
+<details class="more-fields">
+  <summary>▸ 進階分鏡欄位（段落、卡點、轉場、主要動作、備註｜選填，供審閱板與 Excel 使用）</summary>
+  <div class="fields">
+    <label class="f">段落名稱<input type="text" data-f="section" placeholder="例：前奏、開場、主歌一、高潮"></label>
+    <label class="f">卡點／節奏點<input type="text" data-f="beat" placeholder="例：第1小節 0.26s；拍點切換"></label>
+    <label class="f">轉場方式<input type="text" data-f="trans" placeholder="例：硬切、擦鏡 wipe、聲畫延後"></label>
+    <label class="f">主要動作（一句總結）<input type="text" data-f="mainAct" placeholder="留空則依預演／表演自動帶入"></label>
+    <label class="f">鏡頭備註<input type="text" data-f="note" placeholder="例：手部動作放慢、避免文字招牌"></label>
+  </div>
+</details>
+<div class="cat-h" style="margin-top:14px"><h2 style="font-size:14px">時長</h2><span class="hint">單鏡越長越易漂移，3–6 秒最穩</span></div>
+<div class="chips" id="durChips">${DUR.map(d=>`<button class="chip${d===4?' sel':''}" data-dur="${d}">${d} 秒</button>`).join('')}</div>
+<div class="cat-h" style="margin-top:12px"><h2 style="font-size:14px">畫幅</h2></div>
+<div class="chips" id="aspChips"><button class="chip sel" data-asp="9:16">9:16 直式</button><button class="chip" data-asp="16:9">16:9 橫式</button></div>
+</section>`;
+html += `<section class="cat" id="assetSec" data-sec="assets"><div class="cat-h"><span class="num">00+</span><h2>素材庫資產</h2><span class="picked" data-picked="assets"></span><span class="chev">▾</span><span class="hint" style="flex-basis:100%">點選加入參考圖，依點選順序編號為 @圖片1、@圖片2…，支援自訂上傳 PNG/JPG/WebP（存於本機 IndexedDB）</span></div>
+<div class="atool"><button class="btn ghost" type="button" id="caOpenBtn">＋ 新增自訂素材</button><span class="acnt" id="assetSummary">內建預設 13 項・自訂 0 項</span></div>
+<div class="ca-box" id="customAddBox" hidden>
+  <div class="ca-head"><b>新增自訂素材（只存在本機瀏覽器）</b><button class="btn ghost" type="button" id="caCancelTop" style="padding:3px 9px;font-size:12px">關閉</button></div>
+  <div class="ca-drop" id="caDrop">
+    <input type="file" id="caFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
+    <div id="caDropIdle"><b>點擊選擇圖片，或把 PNG / JPG / WebP 拖放到這裡</b><div class="hint">會自動壓縮並存於本機瀏覽器 IndexedDB，重新整理仍保留</div></div>
+    <div class="ca-prev" id="caPrev" hidden><img id="caPrevImg" alt="預覽"><span id="caPrevInfo" class="hint"></span></div>
+  </div>
+  <div class="ca-grid">
+    <label class="f">資產名稱（必填）<input type="text" id="caName" placeholder="例：小美、咖啡廳內景"></label>
+    <label class="f">英文關鍵詞（選填）<input type="text" id="caEn" placeholder="留空自動補齊，如 Xiaomei"></label>
+    <label class="f">分類<select id="caCat"><option value="角色">角色</option><option value="場景">場景</option><option value="道具">道具</option></select></label>
+    <label class="f">狀態標籤（選填）<input type="text" id="caStatus" list="caStatusList" value="自訂" placeholder="如：定稿 / 候選 / 自訂"><datalist id="caStatusList"><option value="自訂"><option value="定稿"><option value="候選"><option value="現行生成用"><option value="待修"></datalist></label>
+  </div>
+  <label id="caPetWrap" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px"><input type="checkbox" id="caPet"> 這是動物／寵物角色（3D 預演使用四足動物模型）</label>
+  <div class="ca-acts"><button class="btn" type="button" id="caSave">確認新增</button><button class="btn ghost" type="button" id="caCancel">取消</button><span class="ca-msg" id="caMsg"></span></div>
+</div>
+<div id="assetBody"></div></section>`;
+html += `<section class="cat" id="pvSec" data-sec="blocking"><div class="cat-h"><span class="num">00++</span><h2>3D 站位設定（位置連續性）</h2><span class="chev">▾</span><span class="hint">用灰模把站位、走位和運鏡先拍一次，錄成參考影片交給 AI 生成工具，人物位置就不會亂跳</span></div>
+<div><div id="pvChars"></div>
+<div class="pvnote">機位、景別、焦段、運鏡和時長會自動跟上面的選擇。第一個角色是鏡頭焦點；選了「過肩鏡」或「主觀鏡」時，會從第二個角色的位置拍。<br>用法：錄好影片後，在 Seedance／即夢等 AI 影片工具上傳為「參考視頻」，同時上傳角色參考圖，再貼上本頁指令。灰模只負責位置和鏡頭，外觀以參考圖為準。預覽與錄製在右邊指令下面。</div></div></section>`;
+for(const c of CATS){
+  html += `<section class="cat" data-sec="${c.id}"><div class="cat-h"><span class="num">${String(n++).padStart(2,'0')}</span><h2>${c.title}</h2><span class="hint">${c.hint}</span><span class="picked" data-picked="${c.id}"></span><span class="chev">▾</span></div><div class="grid">`;
+  for(const it of c.items){
+    html += `<button class="card" data-cat="${c.id}" data-k="${it.k}">${it.svg()}${riskTag(it.risk)}<div class="lb">${it.zh}</div>${it.ds?`<div class="ds">${it.ds}</div>`:''}</button>`;
+  }
+  html += `</div></section>`;
+}
+html += `<section class="cat" data-sec="ban"><div class="cat-h"><span class="num">${String(n++).padStart(2,'0')}</span><h2>禁止事項（可多選）</h2><span class="hint">明確告訴模型不要做甚麼，能大幅減少不合理動作</span><span class="picked" data-picked="ban"></span><span class="chev">▾</span></div>
+<div class="chips" id="banChips">${BAN.map(([z],i)=>`<button class="chip" data-ban="${i}">${z}</button>`).join('')}</div></section>`;
+catsEl.innerHTML = html;
+
+const find = (cid,k) => CATS.find(c=>c.id===cid).items.find(i=>i.k===k);
+
+/* ---------- Custom asset upload handlers ---------- */
+let caPendingFile = null;
+function caSetMsg(m, err){ const el=document.getElementById('caMsg'); el.textContent=m; el.classList.toggle('err',!!err); }
+function caResetForm(){
+  caPendingFile = null;
+  document.getElementById('caFile').value = '';
+  document.getElementById('caName').value = '';
+  document.getElementById('caEn').value = '';
+  document.getElementById('caCat').value = '角色';
+  document.getElementById('caStatus').value = '自訂';
+  document.getElementById('caPet').checked = false;
+  document.getElementById('caPetWrap').style.display = 'flex';
+  document.getElementById('caDropIdle').hidden = false;
+  document.getElementById('caPrev').hidden = true;
+  document.getElementById('caPrevImg').removeAttribute('src');
+  caSetMsg('');
+}
+function caPickFile(f){
+  if(!f) return;
+  if(!/^image\/(png|jpeg|webp)$/i.test(f.type) && !/\.(png|jpe?g|webp)$/i.test(f.name)){
+    caSetMsg('請選擇 PNG、JPG 或 WebP 圖片檔', true); return;
+  }
+  caPendingFile = f;
+  const u = URL.createObjectURL(f);
+  const im = document.getElementById('caPrevImg');
+  im.onload = ()=>URL.revokeObjectURL(u);
+  im.src = u;
+  document.getElementById('caPrevInfo').textContent = `${f.name}（${(f.size/1024).toFixed(0)} KB）`;
+  document.getElementById('caDropIdle').hidden = true;
+  document.getElementById('caPrev').hidden = false;
+  const nm = document.getElementById('caName');
+  if(!nm.value.trim()) nm.value = f.name.replace(/\.[^.]+$/,'').slice(0,30);
+  caSetMsg('');
+}
+document.getElementById('caOpenBtn').onclick = ()=>{
+  const box = document.getElementById('customAddBox');
+  box.hidden = !box.hidden;
+  if(!box.hidden) document.getElementById('caName').focus();
+};
+document.getElementById('caCancel').onclick = ()=>{ caResetForm(); document.getElementById('customAddBox').hidden = true; };
+document.getElementById('caCancelTop').onclick = ()=>{ caResetForm(); document.getElementById('customAddBox').hidden = true; };
+document.getElementById('caCat').onchange = e=>{
+  document.getElementById('caPetWrap').style.display = e.target.value==='角色' ? 'flex' : 'none';
+};
+document.getElementById('caFile').onchange = e=>caPickFile(e.target.files&&e.target.files[0]);
+{
+  const dz = document.getElementById('caDrop');
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) caPickFile(f); });
+}
+document.getElementById('caSave').onclick = async ()=>{
+  const name = document.getElementById('caName').value.trim();
+  if(!caPendingFile){ caSetMsg('請先選擇或拖放一張圖片', true); return; }
+  if(!name){ caSetMsg('請輸入資產名稱', true); document.getElementById('caName').focus(); return; }
+  const group = document.getElementById('caCat').value;
+  const en = document.getElementById('caEn').value.trim();
+  const status = document.getElementById('caStatus').value.trim() || '自訂';
+  const cat = group==='角色' && document.getElementById('caPet').checked;
+  const btn = document.getElementById('caSave'); btn.disabled = true; caSetMsg('壓縮儲存中…');
+  try{
+    const {blob, thumb, w, h} = await compressAssetImage(caPendingFile);
+    const id = 'cust-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    const rec = {id, n:name, en, group, s:status, f:`本機上傳：${caPendingFile.name}（${w}×${h}）`, cat, blob, thumb, created:Date.now()};
+    await AssetDB.put(rec);
+    try{ localStorage.setItem('shotAssetsPing', String(Date.now())); }catch(_){}
+    CUSTOM_LIST.push(registerCustomRec(rec));
+    renderAssets(); updatePicked();
+    caResetForm();
+    document.getElementById('customAddBox').hidden = true;
+    toast(`已新增自訂素材「${name}」`);
+  }catch(e){
+    caSetMsg('儲存失敗：'+(e&&e.message||'瀏覽器不支援 IndexedDB 或空間不足'), true);
+  }finally{
+    btn.disabled = false;
+  }
+};
+
+catsEl.addEventListener('click', async e=>{
+  const del = e.target.closest('[data-del-asset]');
+  if(del){
+    e.stopPropagation();
+    const id = del.dataset.delAsset;
+    if(del.dataset.arm!=='1'){
+      del.dataset.arm='1'; del.classList.add('arm'); del.textContent='確認刪除';
+      setTimeout(()=>{ if(del.isConnected){ del.dataset.arm=''; del.classList.remove('arm'); del.textContent='✕'; } }, 3000);
+      return;
+    }
+    const a = ASSET[id];
+    try{ await AssetDB.del(id); }catch(_){}
+    try{ localStorage.setItem('shotAssetsPing', String(Date.now())); }catch(_){}
+    if(CUSTOM_URLS[id]){ try{ URL.revokeObjectURL(CUSTOM_URLS[id]); }catch(_){} delete CUSTOM_URLS[id]; }
+    delete ASSET[id];
+    CUSTOM_LIST = CUSTOM_LIST.filter(x=>x.id!==id);
+    S.assets = S.assets.filter(x=>x!==id);
+    renderAssets(); update();
+    toast('已刪除自訂素材'+(a?`「${a.n}」`:''));
+    return;
+  }
+  const z = e.target.closest('[data-zoom]');
+  if(z){ e.stopPropagation(); const a=ASSET[z.dataset.zoom]; if(!a) return; const lb=document.getElementById('lb'); lb.querySelector('img').src=a.src||a.thumb||''; lb.querySelector('.cap').textContent=`${a.n}｜${a.s}｜${a.f}`; lb.classList.add('on'); return; }
+  const ac = e.target.closest('[data-aid]');
+  if(ac){ const id=ac.dataset.aid; const i=S.assets.indexOf(id); if(i>=0) S.assets.splice(i,1); else S.assets.push(id); renderAssets(); update(); return; }
+  const card = e.target.closest('.card');
+  if(card){
+    const {cat,k} = card.dataset;
+    S.sel[cat] = S.sel[cat]===k ? undefined : k;
+    catsEl.querySelectorAll(`.card[data-cat="${cat}"]`).forEach(b=>b.classList.toggle('sel', b.dataset.k===S.sel[cat]));
+    if(cat==='body' && typeof pvBodyLink==='function') pvBodyLink();
+    update(); return;
+  }
+  const d = e.target.closest('[data-dur]');
+  if(d){ S.dur=+d.dataset.dur; document.querySelectorAll('[data-dur]').forEach(b=>b.classList.toggle('sel',b===d)); update(); return; }
+  const a = e.target.closest('[data-asp]');
+  if(a){ S.aspect=a.dataset.asp; document.querySelectorAll('[data-asp]').forEach(b=>b.classList.toggle('sel',b===a)); update(); return; }
+  const b = e.target.closest('[data-ban]');
+  if(b){ const i=+b.dataset.ban; S.ban.has(i)?S.ban.delete(i):S.ban.add(i); b.classList.toggle('sel'); update(); }
+});
+function onFieldInput(e){ const f=e.target.dataset.f; if(!f) return; S.f[f]=e.target.value; document.querySelectorAll(`[data-f="${f}"]`).forEach(o=>{ if(o!==e.target) o.value=e.target.value; }); update(); }
+catsEl.addEventListener('input', onFieldInput);
+
+/* ---------- Build prompt ---------- */
+function g(cid){ const k=S.sel[cid]; return k?find(cid,k):null; }
+function build(){
+  const size=g('size'), angle=g('angle'), move=g('move'), lens=g('lens'), comp=g('comp'), light=g('light'), grade=g('grade'), act=g('act'), body=g('body');
+  const f=S.f, bans=[...S.ban].map(i=>BAN[i]);
+  const bodyReal = body && body.k!=='none' ? body : null;
+  // structured
+  const L=[];
+  L.push(`【鏡號／時長】${f.no||'S01'}｜${S.dur}秒｜${S.aspect}`);
+  const refs = assetRefs();
+  if(refs.length || f.extra){
+    L.push(`【參考圖】（依序上傳）`);
+    refs.forEach(r=>L.push(`　@圖片${r.i}：${r.a.n}［${r.a.s}］${r.a.f}`));
+    if(f.extra) L.push(`　其他：${f.extra}`);
+  }
+  const sa=[size&&size.zh, angle&&angle.zh].filter(Boolean).join('，');
+  if(sa||comp) L.push(`【景別／機位】${sa}${comp?(sa?'，':'')+'構圖：'+comp.zh:''}`);
+  if(move) L.push(`【運鏡】${move.zh}（全鏡只此一種運鏡）`);
+  if(lens) L.push(`【鏡頭】${lens.zh}`);
+  if(f.content) L.push(`【畫面】${f.content}`);
+  const stb = (typeof pvStateBits==='function') ? pvStateBits() : null;
+  if(stb&&stb.scene) L.push(`【場景】${stb.scene.zh}`);
+  if(stb&&stb.zh.length) L.push(`【人物狀態】${stb.zh.join('；')}`);
+  const perf = refs.find(r=>!r.a.scene && !r.a.prop && r.a.group!=='道具');
+  if(act) L.push(`【表演】${perf?`@圖片${perf.i} ${perf.a.n}：`:''}${act.zh}（只此一個動作）`);
+  let walkTxt=null; if(bodyReal && bodyReal.k==='walk' && S.blk && typeof pvSyncBlk==='function'){ const w=pvSyncBlk().filter(c=>S.blk[c.id].act!=='stand').map(c=>`${c.n}${ACT[S.blk[c.id].act]}`); if(w.length) walkTxt=w.join('、'); }
+  if(bodyReal) L.push(`【身體動作】${walkTxt||bodyReal.zh}（動作緩慢、單一）`);
+  else if(body && body.k==='none') L.push(`【身體動作】身體保持靜止`);
+  const lc=[light&&light.zh, grade&&('色調：'+grade.zh)].filter(Boolean).join('；');
+  if(lc) L.push(`【光／色】${lc}`);
+  const amb=g('amb'), foley=g('foley'), sfx=g('sfx'), music=g('music'), voice=g('voice'), bridge=g('bridge');
+  const snd=[amb&&('環境：'+amb.zh), voice&&('人聲：'+voice.zh), foley&&('擬音：'+foley.zh+'（只在接觸那一刻）'), sfx&&('特效：'+sfx.zh), music&&('配樂：'+music.zh), bridge&&('銜接：'+bridge.zh)].filter(Boolean);
+  if(snd.length) L.push(`【聲音】${snd.join('；')}`);
+  if(f.line) L.push(`【台詞】${f.line}`);
+  if(bans.length) L.push(`【禁止】${bans.map(b=>b[0]).join('、')}`);
+  if(f.next) L.push(`【銜接】下一鏡：${f.next}`);
+  if(refs.length) L.push(`【一致性】人物五官、髮型、服裝嚴格依照對應參考圖，不可自行更改`);
+  const pvb = (typeof pvPromptBits==='function' && S.blk) ? pvPromptBits() : null;
+  if(pvb){ L.push(`【站位／走位】${pvb.zh.join('；')}`); if(pvb.acts&&pvb.acts.length) L.push(`【動作時序】${pvb.acts.join(' → ')}（先後依預演影片）`); L.push(`【預演參考】上傳「${pvb.file}」作參考視頻：嚴格依照其中人物站位、走位、朝向和運鏡；只沿用位置與鏡頭，不沿用灰模外觀，人物以參考圖為準`); }
+  const struct = L.join('\n');
+
+  // zh paragraph
+  const zp=[];
+  zp.push(`${S.aspect}，${S.dur}秒單鏡頭`);
+  if(refs.length) zp.push(refs.map(r=>`${r.a.scene?'場景':((r.a.prop||r.a.group==='道具')?'道具':'')}依@圖片${r.i}（${r.a.n}）`).join('，'));
+  if(f.extra) zp.push(`參考${f.extra}`);
+  if(pvb) zp.push(`站位：${pvb.zh.join('；')}；人物位置、走位與運鏡嚴格依照參考視頻「${pvb.file}」，灰模外觀不沿用`);
+  if(pvb&&pvb.acts&&pvb.acts.length) zp.push(`動作先後：${pvb.acts.join('→')}`);
+  if(size||angle) zp.push(`${[angle&&angle.zh,size&&size.zh].filter(Boolean).join('')}`);
+  if(comp) zp.push(`${comp.zh}構圖`);
+  if(lens) zp.push(lens.zh);
+  if(f.content) zp.push(f.content);
+  if(stb&&stb.scene) zp.push(`場景：${stb.scene.zh}`);
+  if(stb&&stb.zh.length) zp.push(stb.zh.join('；'));
+  if(act) zp.push(`${perf?perf.a.n:'人物'}${act.zh}`);
+  if(bodyReal) zp.push(`${bodyReal.zh}，動作緩慢`);
+  else if(body) zp.push('身體保持靜止');
+  if(move) zp.push(`鏡頭${move.zh}，全程只有這一種運鏡`);
+  if(light) zp.push(light.zh);
+  if(grade) zp.push(`${grade.zh}色調`);
+  { const a=g('amb'),fo=g('foley'),sf=g('sfx'),mu=g('music'),vo=g('voice'),br=g('bridge');
+    const z=[a&&a.zh, vo&&vo.zh, fo&&(fo.zh+'只在接觸一刻出聲'), sf&&sf.zh, mu&&mu.zh, br&&br.zh].filter(Boolean);
+    if(z.length) zp.push('聲音：'+z.join('、')); }
+  if(f.line) zp.push(`台詞：${f.line}`);
+  if(bans.length) zp.push(`禁止：${bans.map(b=>b[0]).join('、')}`);
+  const zh = zp.join('，') + '。';
+
+  // en paragraph
+  const ep=[];
+  ep.push(`Single ${S.dur}-second shot, ${S.aspect} aspect ratio`);
+  if(refs.length) ep.push(refs.map(r=>`@image${r.i} is ${r.a.en}`).join(', '));
+  if(f.extra) ep.push(`reference ${f.extra}`);
+  if(pvb) ep.push(`blocking: ${pvb.en.join('; ')}; follow the uploaded previz video ${pvb.file} exactly for character positions, walking paths, facing and camera movement, but replace the grey mannequins with the reference characters`);
+  if(pvb&&pvb.actsEn&&pvb.actsEn.length) ep.push(`action order: ${pvb.actsEn.join(' -> ')}`);
+  if(size) ep.push(size.en);
+  if(angle) ep.push(angle.en);
+  if(comp) ep.push(comp.en);
+  if(lens) ep.push(lens.en);
+  if(f.content) ep.push(f.content);
+  if(stb&&stb.scene) ep.push(`setting: ${stb.scene.en}`);
+  if(stb&&stb.en.length) ep.push(stb.en.join('; '));
+  if(act) ep.push(`${perf?perf.a.en:'she'} ${act.en.replace(/\bher\b/g,'their')} — this is the only action in the shot`);
+  if(bodyReal) ep.push(`${bodyReal.en}, slowly and in one continuous motion`);
+  else if(body) ep.push('body stays still');
+  if(move) ep.push(`camera: ${move.en}, the only camera movement`);
+  if(light) ep.push(light.en);
+  if(grade) ep.push(grade.en);
+  { const a=g('amb'),fo=g('foley'),sf=g('sfx'),mu=g('music'),vo=g('voice'),br=g('bridge');
+    const e=[a&&a.en, vo&&vo.en, fo&&fo.en, sf&&sf.en, mu&&mu.en, br&&br.en].filter(Boolean);
+    if(e.length) ep.push('sound: '+e.join('; ')); }
+  if(f.line) ep.push(`dialogue: ${f.line}`);
+  if(bans.length) ep.push(`avoid: ${bans.map(b=>b[1]).join('; ')}`);
+  const en = ep.join(', ') + '.';
+  return {struct, zh, en};
+}
+
+function assess(){
+  const move=g('move'), body=g('body'), act=g('act'), size=g('size');
+  let score=0; const tips=[];
+  if(move) score+=move.risk;
+  if(body) score+=body.risk;
+  if(act) score+=act.risk;
+  if(S.dur>8){ score+=1; tips.push('超過 8 秒的單鏡容易漂移，考慮拆成兩鏡。'); }
+  if(move && move.risk>=2) tips.push(`「${move.zh}」容易讓臉和背景變形，建議時長 ≤ 5 秒、表情保持簡單。`);
+  if(move && move.risk>=1 && body && body.risk>=2) { score+=1; tips.push('鏡頭在動時人物就不要大動：運鏡和身體動作二選一。'); }
+  if(body && body.risk>=3) tips.push('手部、道具、多人接觸是 AI 最易崩的類型：改為「動作前切鏡 → 結果特寫」，或用聲音＋反應鏡頭交代。');
+  else if(body && body.risk===2) tips.push('身體動作建議拆兩鏡，在動作中途切鏡，讓剪輯完成連貫。');
+  if(size && (size.k==='els'||size.k==='ws') && act && act.k!=='stare') tips.push('景別太遠，臉上的微表演觀眾看不到；表演鏡用近景或特寫。');
+  const rs = assetRefs().map(r=>r.a);
+  const chars = rs.filter(a=>!a.scene && !a.prop && a.group!=='道具');
+  if(!chars.length && !S.f.extra) tips.push('未選角色參考圖：人臉一致性沒有保證。生成時要實際傳入圖片，不能只靠文字。');
+  if(chars.length>=3){ score+=1; tips.push(`同一鏡有 ${chars.length} 個角色參考：人越多越易換臉，盡量一鏡最多兩人。`); }
+  if(rs.filter(a=>a.scene).length>1) tips.push('選了多於一個場景：模型可能混合兩個空間，建議一鏡一個場景。');
+  rs.filter(a=>a.s==='候選'||a.s==='待修').forEach(a=>tips.push(`「${a.n}」是${a.s}狀態，未經確認，不宜當正式設定。`));
+  if(rs.some(a=>a.s==='構圖參考')) tips.push('構圖參考圖僅作取景參考，非最終定稿。');
+  const ang=g('angle');
+  { const pl=(typeof pvPlanDesc==='function')?pvPlanDesc():null; if(pl && pl.unsup.length) tips.push(`3D 預演有 ${pl.unsup.length} 句動作未支援（${pl.unsup.slice(0,3).map(u=>u.verb||u.text).join('、')}）：預演區可手動選擇動作。`); }
+  if(ang && (ang.k==='ots'||ang.k==='pov') && chars.length<2) tips.push(`「${ang.zh}」需要兩個角色：鏡頭要從第二個角色的${ang.k==='ots'?'肩後':'視線'}拍。只有一個角色時，請改用平視或其他機位。`);
+  if(rs.some(a=>a.cat) && S.f.line) tips.push('動物／寵物角色通常不開口說人話；若有台詞，請將人聲設為旁白或內心獨白。');
+  if(!S.ban.size) tips.push('加幾項禁止事項，能直接壓低不合理動作。');
+  if(!move) tips.push('未選運鏡：模型可能自己亂動，至少選「固定鏡頭」。');
+  { const mu=g('music'),vo=g('voice'),sf=g('sfx'),br=g('bridge'),fo=g('foley');
+    const n=['amb','foley','sfx','music','voice'].filter(k=>S.sel[k]).length;
+    if(n>=4) tips.push('聲音層太多：每鏡指定一個前景聲（通常是對白），其餘做底；不追求音效數量和音量。');
+    if(mu && mu.k!=='none' && vo && vo.k!=='mute') tips.push('有對白又有配樂：配樂要壓低在對白之下，或在關鍵句前停樂。');
+    if(vo && vo.k==='inner') tips.push('內心獨白嘴不動：提示詞要寫「lips do not move」，否則模型會讓角色開口。');
+    if(vo && vo.k==='meow' && S.f.line) tips.push('喵聲角色不要把台詞意譯寫進人聲指令；意思交給字幕或項圈設定。');
+    if(br && (br.k==='jcut'||br.k==='lcut'||br.k==='carry')) tips.push('J-cut／L-cut 在剪輯時做：生成時每鏡只寫本鏡的聲音，避免和模型自帶的聲音疊成雙響。');
+    if(sf && fo) tips.push('擬音＋特殊音效同鏡：確認哪一下是主角，另一個降低或刪去。'); }
+  if(!tips.length) tips.push('結構乾淨：一個運鏡、一個動作，電影感交給光和焦段。');
+  return {score, tips};
+}
+
+function writePrompt(){
+  const ta=document.getElementById('prompt'); const manual=S.edited[S.fmt];
+  const want = manual!=null ? manual : (S.lastOut?S.lastOut[S.fmt]:'');
+  if(ta.value!==want && !(manual!=null && document.activeElement===ta)) ta.value=want;
+  document.getElementById('promptEdited').classList.toggle('on', manual!=null);
+  ta.style.height='auto'; ta.style.height=Math.max(220, ta.scrollHeight+4)+'px';
+}
+function setDirtyUI(){
+  const pvStale=!!(document.getElementById('pvView')&&document.getElementById('pvView').classList.contains('stale'));
+  const dirty=!!S.dirty||pvStale;
+  document.getElementById('promptStale').classList.toggle('on', !!S.dirty);
+  const gb=document.getElementById('genbar'); gb.classList.toggle('dirty',dirty);
+  document.getElementById('genState').textContent = dirty ? '選項已修改，指令和預演尚未更新' : '指令和預演已是最新';
+}
+function update(){
+  const out = build();
+  if(S.gen || !S.lastOut){ S.lastOut=out; S.dirty=false; writePrompt(); }
+  else S.dirty = JSON.stringify(out)!==JSON.stringify(S.lastOut);
+  setDirtyUI(); updatePicked();
+  const {score,tips} = assess();
+  const pct = Math.min(100, score/8*100);
+  const fill=document.getElementById('barFill'), lvl=document.getElementById('lvl');
+  let col, label;
+  if(score<=2){col='var(--ok)';label='低風險';} else if(score<=4){col='var(--mid)';label='中風險';} else {col='var(--bad)';label='高風險';}
+  fill.style.width = Math.max(6,pct)+'%'; fill.style.background=col; lvl.textContent=`${label}（${score}）`; lvl.style.color=col;
+  document.getElementById('tips').innerHTML = tips.map(t=>`<li>${t}</li>`).join('');
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  S.fmt=t.dataset.fmt; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('sel',x===t)); writePrompt();
+}));
+
+function toast(m){ const el=document.getElementById('toast'); el.textContent=m; setTimeout(()=>el.textContent='',1800); }
+async function copy(text){
+  try{ await navigator.clipboard.writeText(text); toast('已複製'); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('已複製');}catch(_){toast('請手動選取複製');} ta.remove(); }
+}
+document.getElementById('copyBtn').onclick=()=>{ if(S.dirty) genNow(); copy(document.getElementById('prompt').value); };
+document.getElementById('prompt').addEventListener('input',e=>{ S.edited[S.fmt]=e.target.value; document.getElementById('promptEdited').classList.add('on'); e.target.style.height='auto'; e.target.style.height=Math.max(220,e.target.scrollHeight+4)+'px'; });
+document.getElementById('regen').onclick=()=>{ S.edited[S.fmt]=null; genNow(); };
+
+/* ---------- Shot lists：資料存 localStorage（與 shots.html 共用）；表格、匯出、版本管理在 shots.html ---------- */
+const SL_KEY='shotLists_v3';
+const HP=new URLSearchParams((location.hash||'').replace(/^#/,''));
+const EMBED=HP.get('embed')==='pv'?{list:HP.get('list'),shot:HP.get('shot')}:null;
+let SL={active:null,lists:[]};
+function slLoad(){ let d=null; try{ d=JSON.parse(localStorage.getItem(SL_KEY)||'null'); }catch(e){}
+  SL=(d&&Array.isArray(d.lists))?d:{active:null,lists:[]};
+  if(!SL.lists.length){ let old=[]; try{ old=JSON.parse(localStorage.getItem('shotPromptList2')||'[]'); }catch(e){} SL.lists=[{id:'L'+Date.now(),name:'預設鏡頭表',shots:Array.isArray(old)?old:[]}]; }
+  if(!SL.lists.find(l=>l.id===SL.active)) SL.active=SL.lists[0].id; }
+function save(){ if(EMBED) return false;
+  try{ localStorage.setItem(SL_KEY, JSON.stringify(SL)); return true; }
+  catch(e){ try{ SL.lists.forEach(l=>l.shots.forEach(s=>{ delete s.thumb; })); localStorage.setItem(SL_KEY, JSON.stringify(SL)); listMsg('儲存空間不足：已移除預演縮圖後儲存'); return true; }
+    catch(_){ listMsg('儲存失敗：瀏覽器儲存空間不足'); return false; } } }
+// 每次修改前先重讀，避免覆蓋鏡頭表頁剛加的生成版本
+function slMutate(fn){ slLoad(); const r=fn(); save(); renderShots(); return r; }
+function curList(){ return SL.lists.find(l=>l.id===SL.active)||SL.lists[0]; }
+slLoad();
+Object.defineProperty(window,'shots',{get:()=>curList().shots,set:v=>{curList().shots=v;},configurable:true});
+function newId(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function snapshot(){ return {sel:{...S.sel}, ban:[...S.ban], dur:S.dur, aspect:S.aspect, f:{...S.f}, proj:S.proj, assets:[...S.assets], blk:JSON.parse(JSON.stringify(S.blk||{}))}; }
+function restore(s){
+  S.edited={struct:null,zh:null,en:null};
+  S.sel={...s.sel}; S.ban=new Set(s.ban); S.dur=s.dur; S.aspect=s.aspect; S.f={...s.f};
+  S.proj=(s.proj&&LIB[s.proj])?s.proj:'default'; S.assets = s.assets ? [...s.assets] : []; if(s.blk) S.blk=JSON.parse(JSON.stringify(s.blk));
+  renderAssets();
+  catsEl.querySelectorAll('.card').forEach(b=>b.classList.toggle('sel', S.sel[b.dataset.cat]===b.dataset.k));
+  document.querySelectorAll('[data-dur]').forEach(b=>b.classList.toggle('sel', +b.dataset.dur===S.dur));
+  document.querySelectorAll('[data-asp]').forEach(b=>b.classList.toggle('sel', b.dataset.asp===S.aspect));
+  document.querySelectorAll('[data-ban]').forEach(b=>b.classList.toggle('sel', S.ban.has(+b.dataset.ban)));
+  document.querySelectorAll('[data-f]').forEach(i=>i.value=S.f[i.dataset.f]||'');
+  update();
+}
+function assetsInfo(st){ st=st||{}; return (st.assets||[]).filter(id=>ASSET[id]).map((id,i)=>{ const a=ASSET[id]; return {id,ref:i+1,n:a.n,s:a.s,f:a.f,kind:a.scene?'場景':((a.prop||a.group==='道具')?'道具':'角色'),custom:!!a.custom,thumb:a.thumb||a.src||''}; }); }
+function shotRow(sh){
+  const st=sh.state||{}, sel=st.sel||{}, f=st.f||{};
+  const z=cid=>{ const k=sel[cid]; if(!k) return ''; try{ const it=find(cid,k); return it?it.zh:''; }catch(e){ return ''; } };
+  const refs=(st.assets||[]).filter(id=>ASSET[id]).map((id,i)=>`@圖片${i+1} ${ASSET[id].n}｜${ASSET[id].f}`).join('\n');
+  const line=tag=>(sh.text||'').split('\n').filter(l=>l.startsWith(tag)).map(l=>l.replace(tag,'')).join('');
+  return {'鏡號':f.no||'','段落':f.section||'','卡點':f.beat||'','時長(秒)':st.dur||'','畫幅':st.aspect||'','系列':(LIB[st.proj]&&LIB[st.proj].name)||'通用預設','景別':z('size'),'機位':z('angle'),'運鏡':z('move'),'焦段':z('lens'),'構圖':z('comp'),'光線':z('light'),'色調':z('grade'),'表演':z('act'),'身體動作':z('body'),
+    '環境聲':z('amb'),'擬音':z('foley'),'特殊音效':z('sfx'),'配樂':z('music'),'人聲':z('voice'),'聲畫銜接':z('bridge'),'禁止事項':(st.ban||[]).map(i=>BAN[i]?BAN[i][0]:'').join('、'),
+    '參考圖（依序上傳）':refs,'站位／走位':line('【站位／走位】'),'場景':line('【場景】')||(sh.pvInfo&&sh.pvInfo.scene)||'','人物狀態':line('【人物狀態】')||(sh.pvInfo?(sh.pvInfo.states||[]).join('；'):''),'動作時序':line('【動作時序】'),'主要動作':f.mainAct||'','畫面內容':f.content||'','台詞':f.line||'','轉場':f.trans||f.next||'','下一鏡':f.next||'','備註':f.note||'','預演影片':`${f.no||'S01'}-previz`,'指令（結構化）':sh.text||'','指令（單段中文）':sh.zh||'','Prompt (English)':sh.en||''};
+}
+function pvSummary(){ try{ const cs=pvSyncBlk(), D=pvPlanDesc(cs), E=pvStates(cs,D), sc=pvSceneOf(D), ids=cs.map(c=>c.id);
+  const st=cs.map(c=>{ const e=E[c.id], a=[PV_POSE[e.pose]]; if(e.emo!=='calm') a.push(PV_EMO[e.emo]); if(e.hold) a.push('拿'+PV_PROP[e.hold].zh); if(e.at) a.push('在'+PV_AT[e.at]); return c.n+'：'+a.join('、'); });
+  const acts=D.steps.filter(d=>ids.includes(d.who)&&PV_A[d.act]).map(d=>pvStepLabel(d,cs));
+  return {scene:PV_SCENE[sc.k], states:st, acts, unsup:D.unsup.map(u=>u.verb||u.text)}; }catch(e){ return null; } }
+// 加入鏡頭表時拍一張預演縮圖（取動作進行中的一格，含 HUD），存在鏡頭資料裡給鏡頭表頁顯示
+function pvThumb(){ try{ const P=pvInit(); if(!P||P.playing) return ''; pvFrame(Math.max(0,Math.min(S.dur*.62,S.dur-.1)),true); const src=P.out; const portrait=src.height>src.width;
+    const c=document.createElement('canvas'); c.width=portrait?144:256; c.height=portrait?256:144; c.getContext('2d').drawImage(src,0,0,c.width,c.height); const u=c.toDataURL('image/jpeg',.72); pvFrame(0); return u; }catch(e){ return ''; } }
+function shotFromEditor(){ genNow();
+  const sh={state:snapshot(), text:(S.edited.struct!=null?S.edited.struct:S.lastOut.struct), zh:(S.edited.zh!=null?S.edited.zh:S.lastOut.zh), en:(S.edited.en!=null?S.edited.en:S.lastOut.en)};
+  sh.pvInfo=pvSummary(); sh.row=shotRow(sh); sh.assetsInfo=assetsInfo(sh.state); const th=pvThumb(); if(th) sh.thumb=th; sh.updated=Date.now(); return sh; }
+function renderLists(){
+  const sel=document.getElementById('listSel');
+  sel.innerHTML=SL.lists.map(l=>`<option value="${l.id}"${l.id===SL.active?' selected':''}>${String(l.name).replace(/</g,'&lt;')}（${l.shots.length}）</option>`).join('');
+}
+function renderShots(){
+  renderLists();
+  const n=curList().shots.length;
+  document.getElementById('shotCount').textContent = n?`（此表 ${n} 鏡）`:'';
+  document.getElementById('openShots').href='shots.html#list='+encodeURIComponent(SL.active);
+  document.getElementById('updBtn').hidden=!S.loadedShot;
+  if(S.loadedShot) document.getElementById('updBtn').textContent='覆寫原鏡頭 '+(S.loadedShot.no||'');
+}
+function listMsg(m){ const el=document.getElementById('listMsg'); if(!el) return; el.textContent=m; setTimeout(()=>{ if(el.textContent===m) el.textContent=''; },2500); }
+document.getElementById('listSel').onchange=e=>{ const v=e.target.value; slMutate(()=>{ SL.active=v; }); };
+document.getElementById('listNewIdx').onclick=()=>{
+  const box=document.getElementById('newEpBox'); box.hidden=!box.hidden;
+  if(!box.hidden){ const inp=document.getElementById('newEpName'); inp.value=`EP${String(SL.lists.length+1).padStart(2,'0')}`; inp.focus(); inp.select(); }
+};
+document.getElementById('newEpCancel').onclick=()=>{ document.getElementById('newEpBox').hidden=true; };
+document.getElementById('newEpSave').onclick=()=>{
+  const inp=document.getElementById('newEpName'); const nm=(inp.value||'').trim()||`EP${String(SL.lists.length+1).padStart(2,'0')}`;
+  slMutate(()=>{ const id=newId('L'); SL.lists.push({id,name:nm,sub:'',notes:'',shots:[]}); SL.active=id; });
+  document.getElementById('newEpBox').hidden=true;
+  listMsg('已建立集數「'+nm+'」');
+};
+document.getElementById('newEpName').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('newEpSave').click(); } });
+function showOpen(id){ const a=document.getElementById('openShots2'); a.href='shots.html#list='+encodeURIComponent(SL.active)+'&shot='+encodeURIComponent(id); a.hidden=false; a.classList.remove('pulse'); void a.offsetWidth; a.classList.add('pulse'); }
+document.getElementById('addBtn').onclick=()=>{
+  const sh=shotFromEditor();
+  const id=slMutate(()=>{ sh.id=newId('s'); sh.gens=[]; sh.created=Date.now(); curList().shots.push(sh); return sh.id; });
+  toast('已加入「'+curList().name+'」，可開啟鏡頭表'); showOpen(id);
+  S.loadedShot=null; renderShots();
+  const m = /^(.*?)(\d+)$/.exec(S.f.no||'');
+  if(m){ const nx = m[1]+String(+m[2]+1).padStart(m[2].length,'0'); S.f.no=nx; document.querySelectorAll('[data-f="no"]').forEach(i=>i.value=nx); genNow(); }
+};
+document.getElementById('updBtn').onclick=()=>{ const ls=S.loadedShot; if(!ls) return; const sh=shotFromEditor(); let ok=false;
+  slMutate(()=>{ const l=SL.lists.find(x=>x.id===ls.list), o=l&&l.shots.find(x=>x.id===ls.shot); if(!o) return; Object.assign(o,{state:sh.state,text:sh.text,zh:sh.zh,en:sh.en,row:sh.row,assetsInfo:sh.assetsInfo,pvInfo:sh.pvInfo,thumb:sh.thumb,updated:sh.updated}); ok=true; });
+  if(ok){ toast('已覆寫 '+(ls.no||'原鏡頭')+'（生成版本保留）'); showOpen(ls.shot); } else { toast('找不到原鏡頭（可能已刪除），請改用「加入鏡頭表」'); S.loadedShot=null; renderShots(); } };
+// 舊資料補上 id、Excel 欄位和素材資料（鏡頭表頁沒有選項資料庫，靠這些欄位顯示）
+function slBackfill(){ if(EMBED) return; slLoad(); let ch=false;
+  SL.lists.forEach(l=>l.shots.forEach(s=>{ if(!s.id){ s.id=newId('s'); ch=true; } if(!s.gens){ s.gens=[]; ch=true; } if(!s.row){ s.row=shotRow(s); ch=true; } if(!s.assetsInfo){ s.assetsInfo=assetsInfo(s.state); ch=true; } }));
+  if(ch) save(); }
+// 從鏡頭表頁「在選擇器修改」：index.html#load=<表 id>,<鏡 id>
+function loadFromHash(){ const v=new URLSearchParams((location.hash||'').replace(/^#/,'')).get('load'); if(!v) return; const [lid,sid]=v.split(',');
+  slLoad(); const l=SL.lists.find(x=>x.id===lid), o=l&&l.shots.find(x=>x.id===sid); if(!o){ toast('找不到要載入的鏡頭'); return; }
+  restore(o.state); S.edited={struct:null,zh:null,en:null}; S.loadedShot={list:lid,shot:sid,no:(o.state.f||{}).no||''}; genNow(); renderShots(); toast('已載入 '+(S.loadedShot.no||'鏡頭')+'：可修改後「覆寫原鏡頭」或另加一鏡');
+  try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
+window.addEventListener('hashchange',loadFromHash);
+window.addEventListener('storage',e=>{ if(e.key===SL_KEY){ slLoad(); renderShots(); } if(e.key==='shotAssetsPing'){ loadCustomAssets(); } });
+/* 影片檔存 IndexedDB（localStorage 放不下）；embed 模式錄好的預演影片存這裡，鏡頭表頁讀取 */
+const MediaDB={db:null,
+  open(){ if(this.db) return Promise.resolve(this.db); return new Promise((res,rej)=>{ try{ const r=indexedDB.open('shotMedia',1); r.onupgradeneeded=()=>r.result.createObjectStore('files'); r.onsuccess=()=>{ this.db=r.result; res(r.result); }; r.onerror=()=>rej(r.error||new Error('idb')); }catch(e){ rej(e); } }); },
+  async put(k,v){ const db=await this.open(); return new Promise((res,rej)=>{ const tx=db.transaction('files','readwrite'); tx.objectStore('files').put(v,k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('abort')); }); } };
+
+/* ---------- collapsible sections ---------- */
+const DEFAULT_COL=['comp','grade','amb','foley','sfx','music','voice','bridge'];
+let colState={}; try{ colState=JSON.parse(localStorage.getItem('secCol')||'{}'); }catch(e){}
+function applyCol(){ document.querySelectorAll('.cat[data-sec]').forEach(sec=>{ const id=sec.dataset.sec; const c = id in colState ? colState[id] : DEFAULT_COL.includes(id); sec.classList.toggle('col',c); }); }
+function saveCol(){ try{ localStorage.setItem('secCol',JSON.stringify(colState)); }catch(e){} }
+catsEl.addEventListener('click',e=>{ const h=e.target.closest('.cat-h'); if(!h) return; if(e.target.closest('button,select,input,textarea,a,label')) return; const sec=h.parentElement; if(!sec.dataset.sec) return; sec.classList.toggle('col'); colState[sec.dataset.sec]=sec.classList.contains('col'); saveCol(); },true);
+document.getElementById('expAll').onclick=()=>{ document.querySelectorAll('.cat[data-sec]').forEach(sec=>{ colState[sec.dataset.sec]=false; }); saveCol(); applyCol(); };
+document.getElementById('colAll').onclick=()=>{ document.querySelectorAll('.cat[data-sec]').forEach(sec=>{ colState[sec.dataset.sec]=true; }); saveCol(); applyCol(); };
+function updatePicked(){
+  document.querySelectorAll('[data-picked]').forEach(el=>{ const id=el.dataset.picked; let t='';
+    if(id==='ban') t=[...S.ban].map(i=>BAN[i][0]).join('、');
+    else if(id==='assets') t=assetRefs().map(r=>r.a.n).join('、');
+    else { const k=S.sel[id]; if(k){ const it=find(id,k); t=it?it.zh:''; } }
+    el.textContent = t?('已選：'+t):''; });
+}
+applyCol();
+
+document.getElementById('resetBtn').onclick=()=>{ if(S.blk){ delete S.blk._st; delete S.blk._scene; } S.loadedShot=null; renderShots(); restore({sel:{},ban:[],dur:4,aspect:S.aspect,f:{...S.f,content:'',line:'',next:'',section:'',beat:'',trans:'',mainAct:'',note:''},proj:S.proj,assets:[]}); };
+
+/* defaults that model the "穩" approach */
+
+/* ---------- 3D 站位預演 ---------- */
+S.blk = S.blk || {};
+S.edited = S.edited || {struct:null,zh:null,en:null};
+const PV_COL=['#e0773a','#5b7fd6','#4fb07a','#c45bb8'];
+const POS={L:'畫面左',C:'畫面中',R:'畫面右'}, DEP={F:'前景',M:'中景',B:'後景'}, FACE={cam:'面向鏡頭',right:'面向畫面右',left:'面向畫面左',back:'背對鏡頭'}, ACT={stand:'站立不動',toward:'走向鏡頭',away:'走離鏡頭',goleft:'走向畫面左',goright:'走向畫面右'};
+const POS_EN={L:'screen left',C:'center',R:'screen right'}, DEP_EN={F:'foreground',M:'midground',B:'background'}, FACE_EN={cam:'facing camera',right:'facing screen right',left:'facing screen left',back:'back to camera'}, ACT_EN={stand:'standing still',toward:'walking toward camera',away:'walking away from camera',goleft:'walking to screen left',goright:'walking to screen right'};
+function pvChars(){
+  const cs = assetRefs().filter(r=>!r.a.scene && !r.a.prop && r.a.group!=='道具').slice(0,4).map(r=>({id:r.a.id,n:r.a.n,cat:!!r.a.cat,ref:r.i}));
+  return cs.length?cs:[{id:'A',n:'角色A',cat:false,ref:0}];
+}
+function pvDefault(i,n){
+  if(n===1) return {pos:'C',dep:'M',face:'cam',act:'stand'};
+  if(n===2) return i===0?{pos:'L',dep:'M',face:'right',act:'stand'}:{pos:'R',dep:'M',face:'left',act:'stand'};
+  return [{pos:'L',dep:'M',face:'right',act:'stand'},{pos:'R',dep:'M',face:'left',act:'stand'},{pos:'C',dep:'B',face:'cam',act:'stand'},{pos:'C',dep:'F',face:'back',act:'stand'}][i];
+}
+function pvSyncBlk(){ const cs=pvChars(); cs.forEach((c,i)=>{ const cur=S.blk[c.id]; if(!cur||!cur.manual) S.blk[c.id]=pvDefault(i,cs.length); }); return cs; }
+function pvRenderControls(){
+  const cs=pvSyncBlk(); const el=document.getElementById('pvChars'); if(!el) return;
+  const sel=(id,key,map,val,dis)=>`<label>${{pos:'左右',dep:'前後',face:'朝向',act:'動作'}[key]}<select data-pv="${id}" data-key="${key}"${dis?' disabled title="走動時朝向跟走的方向"':''}>${dis?'<option>隨走向</option>':Object.entries(map).map(([k,v])=>`<option value="${k}"${k===val?' selected':''}>${v}</option>`).join('')}</select></label>`;
+  el.innerHTML = cs.map((c,i)=>{const b=S.blk[c.id]; return `<div class="pvrow"><b><span class="sw" style="background:${PV_COL[i]}"></span>${c.ref?'@圖片'+c.ref+' ':''}${c.n}${i===0?'（鏡頭焦點）':''}</b><div class="pvsel">${sel(c.id,'pos',POS,b.pos)}${sel(c.id,'dep',DEP,b.dep)}${sel(c.id,'face',FACE,b.face,b.act!=='stand')}${sel(c.id,'act',ACT,b.act)}</div></div>`}).join('');
+}
+function pvSetBody(k){ S.sel.body=k; catsEl.querySelectorAll('.card[data-cat="body"]').forEach(b=>b.classList.toggle('sel', b.dataset.k===k)); }
+function pvBodyLink(){ const cs=pvSyncBlk(); const walking=cs.some(c=>S.blk[c.id].act!=='stand');
+  if(S.sel.body==='walk' && !walking){ S.blk[cs[0].id].act='toward'; S.blk[cs[0].id].manual=true; }
+  else if(S.sel.body!=='walk' && walking){ cs.forEach(c=>{ if(S.blk[c.id].act!=='stand'){ S.blk[c.id].act='stand'; S.blk[c.id].manual=true; } }); } }
+document.addEventListener('change',e=>{ const t=e.target; if(t.dataset && t.dataset.pv){ S.blk[t.dataset.pv][t.dataset.key]=t.value; S.blk[t.dataset.pv].manual=true;
+    if(t.dataset.key==='act'){ const cs=pvSyncBlk(); const walking=cs.some(c=>S.blk[c.id].act!=='stand'); if(walking && S.sel.body!=='walk') pvSetBody('walk'); else if(!walking && S.sel.body==='walk') pvSetBody('none'); }
+    update(); } if(t.id==='pvUse') update(); });
+// 「畫面內容補充」手動欄位 → 指令文字（文字描述本身已在【畫面】，這裡只補手動選的欄位）
+function pvStateBits(){
+  if(!S.blk) return null; const man=S.blk._st||{}, cs=pvChars(), zh=[], en=[];
+  cs.forEach(c=>{ const m=man[c.id]; if(!m) return; const a=[], b=[];
+    if(m.pose&&PV_POSE[m.pose]){ a.push(PV_POSE[m.pose]); b.push(PV_POSE_EN[m.pose]); }
+    if(m.emo&&PV_EMO[m.emo]){ a.push('情緒'+PV_EMO[m.emo]); b.push('looking '+PV_EMO_EN[m.emo]); }
+    if(m.hold&&m.hold!=='none'&&PV_PROP[m.hold]){ a.push('手拿'+PV_PROP[m.hold].zh); b.push('holding '+PV_PROP[m.hold].en); } else if(m.hold==='none'){ a.push('空手'); b.push('empty-handed'); }
+    if(m.at&&m.at!=='none'&&PV_AT[m.at]){ a.push('在'+PV_AT[m.at]); b.push(PV_AT_EN[m.at]); }
+    if(a.length){ zh.push(`${c.ref?'@圖片'+c.ref:''}${c.n}：${a.join('、')}`); en.push(`${c.ref?'@image'+c.ref+' ':''}${(ASSET[c.id]&&ASSET[c.id].en)||c.n}: ${b.join(', ')}`); } });
+  const sc=S.blk._scene&&PV_SCENE[S.blk._scene]?{zh:PV_SCENE[S.blk._scene],en:PV_SCENE_EN[S.blk._scene]}:null;
+  return (zh.length||sc)?{zh,en,scene:sc}:null;
+}
+function pvPromptBits(){
+  const use=document.getElementById('pvUse'); if(!use||!use.checked) return null;
+  const cs=pvSyncBlk();
+  const zh=cs.map(c=>{const b=S.blk[c.id]; return `${c.ref?'@圖片'+c.ref:''}${c.n}：${POS[b.pos]}、${DEP[b.dep]}、${b.act==='stand'?FACE[b.face]+'、':''}${ACT[b.act]}`;});
+  const en=cs.map(c=>{const b=S.blk[c.id]; return `${c.ref?'@image'+c.ref+' ':''}${(ASSET[c.id]&&ASSET[c.id].en)||c.n}: ${POS_EN[b.pos]}, ${DEP_EN[b.dep]}, ${b.act==='stand'?FACE_EN[b.face]+', ':''}${ACT_EN[b.act]}`;});
+  const acts=[], actsEn=[];
+  try{ const D=pvPlanDesc(cs), ids=cs.map(c=>c.id); D.steps.filter(d=>ids.includes(d.who)&&PV_A[d.act]).forEach(d=>{ acts.push(pvStepLabel(d,cs)); actsEn.push(pvStepLabelEn(d,cs)); }); }catch(e){}
+  return {zh, en, file:`${S.f.no||'S01'}-previz`, acts, actsEn};
+}
+
+/* three.js scene */
+let PV=null;
+function pvInit(){
+  if(PV||typeof THREE==='undefined') return PV;
+  const out=document.getElementById('pvOut'); if(!out) return null;
+  const glc=document.getElementById('pvGL');
+  const r=new THREE.WebGLRenderer({canvas:glc,antialias:true,preserveDrawingBuffer:false});
+  r.setPixelRatio(1); r.shadowMap.enabled=true;
+  const scene=new THREE.Scene(); scene.background=new THREE.Color('#a9bccd'); scene.fog=new THREE.Fog('#a9bccd',25,70);
+  scene.add(new THREE.HemisphereLight('#ffffff','#556070',0.75));
+  const sun=new THREE.DirectionalLight('#fff4e0',0.8); sun.position.set(6,12,8); sun.castShadow=true; sun.shadow.mapSize.set(512,512); Object.assign(sun.shadow.camera,{left:-15,right:15,top:15,bottom:-15}); scene.add(sun);
+  const m=(c)=>new THREE.MeshStandardMaterial({color:c,flatShading:true});
+  const street=new THREE.Group(); scene.add(street);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(120,120),m('#8d8a84')); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; street.add(ground);
+  const walk=new THREE.Mesh(new THREE.PlaneGeometry(6,120),m('#a39b8f')); walk.rotation.x=-Math.PI/2; walk.position.set(0,0.01,0); walk.receiveShadow=true; street.add(walk);
+  for(let i=-6;i<6;i++){ for(const side of [-1,1]){ const h=4+((i*7+side*3)%5+5)%5*1.6; const b=new THREE.Mesh(new THREE.BoxGeometry(5,h,4),m(side<0?'#b8b0a2':'#c9c2b6')); b.position.set(side*6.5,h/2,i*6-6); b.castShadow=true; b.receiveShadow=true; street.add(b);} }
+  for(let i=-3;i<3;i++){ const tr=new THREE.Group(); const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,1.6,6),m('#6b5a45')); trunk.position.y=0.8; const top=new THREE.Mesh(new THREE.IcosahedronGeometry(0.9,0),m('#5f8a4f')); top.position.y=2.1; tr.add(trunk,top); tr.position.set(i%2?3.4:-3.4,0,i*8-4); tr.traverse(o=>{o.castShadow=true}); street.add(tr); }
+  const cam=new THREE.PerspectiveCamera(40,9/16,0.05,200);
+  PV={r,scene,cam,glc,out,ctx:out.getContext('2d'),people:{},m,playing:false,t:0,rec:null,envs:{street},envK:'street'};
+  return PV;
+}
+function pvLabel(text,color){
+  const c=document.createElement('canvas'); c.width=256; c.height=64; const x=c.getContext('2d');
+  x.fillStyle='rgba(0,0,0,.6)'; x.fillRect(0,8,256,48); x.fillStyle=color; x.fillRect(0,8,8,48);
+  x.fillStyle='#fff'; x.font='bold 28px "Noto Sans TC",sans-serif'; x.textAlign='center';
+  if(text.includes('・')){ const [nm,em]=text.split('・'); text=nm.replace(/\s*v\d+\w*$/i,'').slice(0,8)+'・'+em; const w=x.measureText(text).width; if(w>236) x.font=`bold ${Math.floor(28*236/w)}px "Noto Sans TC",sans-serif`; x.fillText(text,132,43); }
+  else x.fillText(text.slice(0,9),132,43);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false})); sp.scale.set(0.6,0.15,1); return sp;
+}
+function pvPerson(color,name,cat){
+  const g=new THREE.Group(); const mat=PV.m(color), dark=PV.m('#2b2f38'), skin=PV.m('#d8c3ab');
+  const box=(w,h,d,mt)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mt); o.castShadow=true; return o;};
+  const parts={};
+  const anchor=(par,x,y,z)=>{ const o=new THREE.Object3D(); o.position.set(x,y,z); par.add(o); return o; };
+  if(cat){
+    // same look as before; body/head/tail sit in an "up" pivot so the cat can lean, and the mouth is the "hand" that carries props
+    const up=new THREE.Group(); up.position.set(0,0.2,0); g.add(up);
+    const body=box(0.22,0.2,0.5,mat); body.position.set(0,0.06,0); up.add(body);
+    const head=new THREE.Group(); head.position.set(0,0.2,0.28); up.add(head);
+    const hm=new THREE.Mesh(new THREE.IcosahedronGeometry(0.11,0),mat); hm.castShadow=true; head.add(hm);
+    const nose=box(0.04,0.04,0.05,dark); nose.position.set(0,-0.01,0.11); head.add(nose);
+    const tail=box(0.04,0.04,0.32,mat); tail.position.set(0,0.22,-0.36); tail.rotation.x=-0.8; up.add(tail);
+    parts.legs=[]; for(const [x,z] of [[-0.08,0.18],[0.08,0.18],[-0.08,-0.18],[0.08,-0.18]]){ const lg=new THREE.Group(); const l=box(0.06,0.18,0.06,mat); l.position.y=-0.09; lg.add(l); lg.position.set(x,0.18,z); g.add(lg); parts.legs.push(lg);} parts.cat=true; parts.labelY=0.75;
+    parts.up=up; parts.head=head; parts.hR=anchor(head,0,-0.06,0.15); parts.hL=parts.hR;
+  } else {
+    // same look as before; upper body pivots at the hips, head is its own pivot, legs have knees, arms carry a hand anchor
+    const hips=box(0.36,0.2,0.22,dark); hips.position.y=0.86; g.add(hips);
+    const up=new THREE.Group(); up.position.y=0.86; g.add(up);
+    const torso=box(0.44,0.6,0.25,mat); torso.position.y=0.40; up.add(torso);
+    const neck=box(0.1,0.08,0.1,skin); neck.position.y=0.74; up.add(neck);
+    const head=new THREE.Group(); head.position.y=0.90; up.add(head);
+    const hm=new THREE.Mesh(new THREE.IcosahedronGeometry(0.14,0),skin); hm.castShadow=true; head.add(hm);
+    const visor=box(0.22,0.06,0.06,dark); visor.position.set(0,0.03,0.12); head.add(visor);
+    // arm = upper arm + elbow pivot + forearm (same total length as before); hand anchor sits at the end of the forearm
+    const arm=x=>{ const pv=new THREE.Group(); const u=box(0.1,0.32,0.12,mat); u.position.y=-0.16; pv.add(u);
+      const el=new THREE.Group(); el.position.y=-0.32; el.rotation.order='YXZ'; pv.add(el); const fo=box(0.1,0.30,0.12,mat); fo.position.y=-0.15; el.add(fo);
+      pv.position.set(x,0.66,0); up.add(pv); pv.userData.elbow=el; pv.userData.hand=anchor(el,0,-0.28,0.02); return pv; };
+    const leg=x=>{ const pv=new THREE.Group(); const th=box(0.14,0.42,0.16,dark); th.position.y=-0.21; pv.add(th); const kn=new THREE.Group(); kn.position.y=-0.42; pv.add(kn); const sh=box(0.14,0.38,0.16,dark); sh.position.y=-0.19; kn.add(sh); pv.position.set(x,0.8,0); g.add(pv); pv.userData.knee=kn; return pv; };
+    parts.lL=leg(-0.1); parts.lR=leg(0.1); parts.aL=arm(-0.29); parts.aR=arm(0.29);
+    parts.up=up; parts.head=head; parts.hL=parts.aL.userData.hand; parts.hR=parts.aR.userData.hand;
+    parts.labelY=2.15;
+  }
+  const lab=pvLabel(name,color); lab.position.y=parts.labelY; g.add(lab);
+  g.rotation.order='YXZ'; // tip (lie/fall) in the body's own frame, then yaw
+  g.userData.parts=parts; PV.scene.add(g); return g;
+}
+/* ---------- 3D 預演：場景（在哪） ---------- */
+const PV_SCENE={street:'街道（戶外）',cafe:'咖啡廳／餐廳',train:'車廂',doorway:'門外／門口',corridor:'走廊',office:'辦公室／書桌',bathroom:'浴室',home:'客廳／家中'};
+const PV_SCENE_EN={street:'on the street',cafe:'in a cafe or restaurant',train:'in a train carriage',doorway:'outside a doorway',corridor:'in a corridor',office:'in an office at a desk',bathroom:'in a bathroom',home:'in a living room'};
+const PV_SCENE_RE=[['cafe','咖啡廳|咖啡館|咖啡店|冰室|茶餐廳|餐廳|餐館|飯店|酒吧|cafe'],['train','車廂|捷運|港鐵|地鐵|列車|火車|巴士|電車'],['doorway','門外|門口|大門前|家門前'],['corridor','走廊|通道|走道|樓梯間'],['office','辦公室|編劇房|編劇桌|書房|片場|值班室|會議室|書桌'],['bathroom','浴室|淋浴|洗手間|廁所|化妝間'],['home','客廳|房間|臥室|睡房|家裡|家中|沙發|床上'],['street','街上|街道|馬路|路口|街頭|街邊|公園|戶外']];
+const PV_SCENE_OF={'sc-home':'home','sc-cafe':'cafe','sc-street':'street','sc-office':'office'};
+const PV_SKY={street:['#a9bccd',25,70],doorway:['#a9bccd',25,70],cafe:['#d9cdb4',30,90],train:['#c9ccd0',30,90],corridor:['#bfc4bc',30,90],office:['#d4d6d8',30,90],bathroom:['#e6ecef',30,90],home:['#d8c9b8',30,90]};
+function pvEnvBuild(k){
+  const P=PV, G=new THREE.Group(), m=P.m;
+  const add=(w,h,d,col,x,y,z,o)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof col==='string'?m(col):col); me.position.set(x,y,z); me.receiveShadow=true; me.castShadow=!(o&&o.noShadow); if(o&&o.ry) me.rotation.y=o.ry; G.add(me); return me; };
+  const cyl=(r,h,col,x,y,z)=>{ const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,10),m(col)); me.position.set(x,y,z); me.castShadow=true; G.add(me); return me; };
+  const room=(w,backZ,wall,floor)=>{ const fl=new THREE.Mesh(new THREE.PlaneGeometry(60,60),m(floor)); fl.rotation.x=-Math.PI/2; fl.receiveShadow=true; G.add(fl);
+    add(2*w+1,3.2,.2,wall,0,1.6,backZ-.1,{noShadow:1}); add(.2,3.2,40,wall,-w-.1,1.6,backZ+20,{noShadow:1}); add(.2,3.2,40,wall,w+.1,1.6,backZ+20,{noShadow:1}); };
+  const glass=new THREE.MeshStandardMaterial({color:'#9ec9e6',transparent:true,opacity:.45,flatShading:true});
+  if(k==='cafe'){ room(4.2,-6,'#d9cdb4','#7d6a55'); add(8.4,.9,.04,'#5e8f6e',0,.45,-5.96,{noShadow:1}); add(.04,.9,30,'#5e8f6e',-4.18,.45,9,{noShadow:1}); add(.04,.9,30,'#5e8f6e',4.18,.45,9,{noShadow:1});
+    add(3.2,1.05,.6,'#8c5a3c',1.6,.52,-5.4); add(3.3,.06,.7,'#cfc3a8',1.6,1.08,-5.4); add(2,.8,.05,'#2d2f33',-1.6,2.0,-5.95,{noShadow:1});
+    for(const [x,z] of [[-3.1,-2.8],[3.1,-2.8],[-3.1,2.4],[3.1,2.4]]){ add(.8,.05,.7,'#cfc3a8',x,.75,z); add(.08,.72,.08,'#5b4a3a',x,.37,z); add(.9,.45,.4,'#9b3d36',x,.23,z-.6); add(.9,.45,.4,'#9b3d36',x,.23,z+.6); add(.9,.6,.1,'#9b3d36',x,.75,z-.8); add(.9,.6,.1,'#9b3d36',x,.75,z+.8); }
+    for(const x of [-2,0,2]){ add(.3,.15,.3,'#f6e7b0',x,2.7,-3.4,{noShadow:1}); add(.02,.5,.02,'#333',x,3.0,-3.4,{noShadow:1}); } }
+  else if(k==='train'){ room(1.75,-9,'#c9ccd0','#6f7378'); for(const s of [-1,1]){ add(.4,.42,14,'#4f7fb0',s*1.55,.21,-1); add(.08,.5,14,'#4f7fb0',s*1.71,.6,-1); add(.02,.7,12,'#33475c',s*1.74,1.5,-1,{noShadow:1}); const rail=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,14,8),m('#d8dade')); rail.rotation.x=Math.PI/2; rail.position.set(s*1.2,2.05,-1); G.add(rail); }
+    for(const z of [-5.6,-2.4,3.4]) for(const s of [-1,1]) cyl(.025,2.1,'#d8dade',s*1.2,1.05,z); add(1,2.1,.05,'#9aa1a8',0,1.05,-8.97,{noShadow:1}); add(.6,.8,.02,'#33475c',0,1.5,-8.94,{noShadow:1}); }
+  else if(k==='doorway'){ add(9,3.4,.25,'#b9a78f',0,1.7,-4.7,{noShadow:1}); add(1,2.15,.08,'#6b4f3a',1,1.07,-4.55); add(1.8,1.1,.04,glass,-1.6,1.45,-4.55,{noShadow:1}); add(3,.5,.1,'#a33a2e',0,2.9,-4.52,{noShadow:1}); add(.12,.12,.04,'#d0d0d0',1.65,1.3,-4.55,{noShadow:1}); }
+  else if(k==='corridor'){ room(2,-10,'#bfc4bc','#8f9188'); for(const z of [-6,-2,3]) for(const s of [-1,1]) add(.05,2.1,.9,'#7a6450',s*1.97,1.05,z,{noShadow:1}); for(const z of [-7,-3,1]) add(.6,.04,.6,'#f3f1e6',0,3.18,z,{noShadow:1}); }
+  else if(k==='office'){ room(4.5,-6,'#d4d6d8','#8a8d92'); add(1.6,.06,.8,'#b89a72',2.3,.75,-4.6); add(.08,.72,.7,'#6b5a45',1.6,.37,-4.6); add(.08,.72,.7,'#6b5a45',3,.37,-4.6); add(.6,.4,.05,'#22252b',2.3,1.0,-4.85); add(.5,.45,.5,'#3d4450',2.3,.23,-3.9);
+    add(1.6,2,.4,'#7b6248',-2.6,1,-5.75); for(let i=0;i<4;i++) add(1.4,.35,.3,['#a85b4b','#4f7fb0','#c9a24b','#5e8f6e'][i],-2.6,.35+i*.45,-5.7); add(.02,1.2,2.4,glass,-4.48,1.6,-2,{noShadow:1}); add(2,1.1,.04,'#f4f4f2',0,1.7,-5.96,{noShadow:1}); }
+  else if(k==='bathroom'){ room(3,-5,'#e6ecef','#9fb3bd'); add(6,1.1,.03,'#b9d0dc',0,.55,-4.97,{noShadow:1}); add(1.4,.9,.5,'#f2f2f2',-1.2,.45,-4.7); add(1.2,.9,.02,'#bcd6e6',-1.2,1.65,-4.97,{noShadow:1}); add(.04,2.2,1.8,glass,1.9,1.1,-3.9,{noShadow:1}); cyl(.03,.4,'#c0c4c8',2.4,2.1,-4.8); }
+  else if(k==='home'){ room(4.5,-6,'#d8c9b8','#9b7b5c'); const rug=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.2),m('#8a5a5a')); rug.rotation.x=-Math.PI/2; rug.position.set(0,.012,-1.4); rug.receiveShadow=true; G.add(rug);
+    add(2.6,.45,.9,'#6d7f8f',0,.23,-5.4); add(2.6,.55,.2,'#6d7f8f',0,.72,-5.8); add(.2,.6,.9,'#6d7f8f',-1.4,.3,-5.4); add(.2,.6,.9,'#6d7f8f',1.4,.3,-5.4);
+    add(.9,.42,.6,'#7b6248',2.7,.21,-2.2); cyl(.03,1.5,'#444',-2.6,.75,-5.2); cyl(.22,.3,'#f3e3c0',-2.6,1.6,-5.2); add(1.2,.7,.04,'#2b2f38',0,1.7,-5.96,{noShadow:1}); }
+  return G;
+}
+function pvEnv(k){ const P=PV; if(!PV_SCENE[k]) k='street'; if(P.envK===k) return;
+  if(!P.envs[k] && k!=='street'){ P.envs[k]=pvEnvBuild(k); P.scene.add(P.envs[k]); }
+  for(const key in P.envs) P.envs[key].visible = key===k || (k==='doorway'&&key==='street');
+  const sky=PV_SKY[k]; P.scene.background.set(sky[0]); P.scene.fog.color.set(sky[0]); P.scene.fog.near=sky[1]; P.scene.fog.far=sky[2]; P.envK=k; }
+const PV_SIZE={els:[16,1.0],ws:[6.2,0.95],ms:[3.2,1.25],mcu:[2.3,1.4],cu:[1.6,1.55],bcu:[1.0,1.7],ecu:[0.55,1.76]};
+const PV_FOCAL={'24':24,'35':35,'50':50,'85':85,'135':135,'macro':60};
+const PV_MOVE={fixed:'固定',push:'推近',pull:'拉遠',truck:'橫移',pan:'搖鏡',crane:'升',craneDown:'降',follow:'跟拍',orbit:'環繞',hand:'手持'};
+function pvPlace(cs,t){
+  // returns world positions of each char at time t (seconds)
+  const res={}; const xs={L:-1.1,C:0,R:1.1}, zs={F:1.6,M:0,B:-3.2}, faces={cam:0,right:Math.PI/2,left:-Math.PI/2,back:Math.PI};
+  cs.forEach(c=>{const b=S.blk[c.id]; let x=xs[b.pos], z=zs[b.dep], ry=faces[b.face]; const sp=c.cat?0.7:1.1; let moving=true;
+    if(b.act==='toward'){z+=sp*t; ry=0;} else if(b.act==='away'){z-=sp*t; ry=Math.PI;} else if(b.act==='goleft'){x-=sp*t; ry=-Math.PI/2;} else if(b.act==='goright'){x+=sp*t; ry=Math.PI/2;} else moving=false;
+    res[c.id]={x,z,ry,moving};});
+  return res;
+}
+/* ---------- 3D 預演：敘事動作（解析「畫面內容補充」＋動作卡 → 時序 → 灰模姿勢／道具） ---------- */
+const PV_A={
+ pickup:{zh:'伸手拿起',en:'reaches out and picks up',prop:1,w:1.1},
+ pickupBody:{zh:'拿出（從身上）',en:'takes out',prop:1,w:.9},
+ putdown:{zh:'放下',en:'puts down',prop:1,w:1},
+ give:{zh:'遞給',en:'hands over to',prop:1,pair:1,w:1.5},
+ snatch:{zh:'搶走',en:'snatches from',prop:1,pair:1,w:1.3},
+ phone:{zh:'看手機',en:'looks at',prop:1,defProp:'phone',w:1},
+ hug:{zh:'擁抱',en:'hugs',pair:1,w:1.4},
+ push:{zh:'推開',en:'shoves',pair:1,w:1.2},
+ touch:{zh:'觸碰',en:'touches',pair:1,w:1.1},
+ hand:{zh:'牽手',en:'takes the hand of',pair:1,w:1.2},
+ approach:{zh:'走向',en:'walks toward',pair:'opt',w:1.2},
+ face:{zh:'轉向',en:'turns to face',pair:1,w:.7},
+ look:{zh:'轉頭看',en:'turns the head to look at',pair:'opt',w:.7},
+ point:{zh:'指向',en:'points at',pair:'opt',w:.9},
+ leave:{zh:'走開',en:'walks away',w:1.1},
+ stepback:{zh:'後退',en:'steps back',w:.8},
+ turn:{zh:'轉身',en:'turns around',w:.9},
+ sit:{zh:'坐下',en:'sits down',w:1.1},
+ stand:{zh:'起身',en:'stands up',w:1.1},
+ squat:{zh:'蹲下',en:'crouches down',w:1},
+ bow:{zh:'鞠躬',en:'bows',w:1},
+ nod:{zh:'點頭',en:'nods',w:.8},
+ shake:{zh:'搖頭',en:'shakes the head',w:.8},
+ headdown:{zh:'低頭',en:'lowers the head',w:.7},
+ headup:{zh:'抬頭',en:'raises the head',w:.7},
+ wave:{zh:'揮手',en:'waves',w:1},
+ raise:{zh:'舉手',en:'raises a hand',w:.9},
+ press:{zh:'按鈴／按掣',en:'presses the button',w:1},
+ door:{zh:'開門／推門',en:'opens the door',w:1},
+ drink:{zh:'喝一口',en:'takes a sip from',prop:1,defProp:'cup',w:1.2},
+ eat:{zh:'吃一口',en:'takes a bite',w:1.1},
+ call:{zh:'打電話',en:'talks on',prop:1,defProp:'phone',w:1.2},
+ write:{zh:'寫字／打字',en:'writes',w:1.2},
+ throw:{zh:'扔出',en:'throws',prop:1,w:1},
+ cry:{zh:'掩面哭',en:'cries, covering the face',w:1.3},
+ laugh:{zh:'大笑',en:'laughs',w:1},
+ clap:{zh:'拍手',en:'claps',w:1},
+ think:{zh:'托腮沉思',en:'rests the chin on a hand, thinking',w:1},
+ crossarms:{zh:'雙手抱胸',en:'crosses the arms',w:.8},
+ akimbo:{zh:'叉腰',en:'puts the hands on the hips',w:.8},
+ shrug:{zh:'聳肩攤手',en:'shrugs',w:.8},
+ tremble:{zh:'發抖',en:'trembles',w:1},
+ stretch:{zh:'伸懶腰',en:'stretches both arms up',w:1},
+ kneel:{zh:'跪下',en:'kneels down',w:1.1},
+ lie:{zh:'躺下',en:'lies down',w:1.3},
+ fall:{zh:'跌倒',en:'falls down',w:1.1},
+ jump:{zh:'跳起',en:'jumps',w:.9},
+ run:{zh:'跑開',en:'runs off',w:1.1},
+ kiss:{zh:'親吻',en:'kisses',pair:1,w:1.3},
+ idle:{zh:'停一拍',en:'pauses',w:.6}
+};
+const PV_FAM={pickup:'prop',pickupBody:'prop',putdown:'prop',give:'prop',snatch:'prop',phone:'prop',drink:'prop',call:'prop',throw:'prop',sit:'sit',stand:'sit',squat:'sit',kneel:'sit',lie:'sit',hand:'touch'};
+/* 狀態：姿勢／情緒／位置參照（畫面內容補充：誰、在哪、狀態） */
+const PV_POSE={stand:'站著',sit:'坐著',squat:'蹲著',kneel:'跪著',lie:'躺著',lean:'倚靠'};
+const PV_POSE_EN={stand:'standing',sit:'sitting',squat:'crouching',kneel:'kneeling',lie:'lying down',lean:'leaning'};
+const PV_EMO={calm:'平靜',happy:'開心',sad:'難過',angry:'生氣',surprised:'驚訝',nervous:'緊張',afraid:'害怕'};
+const PV_EMO_EN={calm:'calm',happy:'happy',sad:'sad',angry:'angry',surprised:'surprised',nervous:'nervous',afraid:'scared'};
+const PV_EMO_RE=[['happy','開心|高興|愉快|微笑|笑著|笑容|笑笑|興奮|欣喜|喜悅|得意'],['sad','難過|傷心|悲傷|失落|沮喪|哀傷|心碎|委屈|含淚|眼泛淚光'],['angry','生氣|憤怒|發怒|惱怒|怒氣|怒視|怒瞪|氣沖沖|氣憤|火大'],['surprised','驚訝|吃驚|大吃一驚|震驚|錯愕|愣住|呆住|嚇了一跳|嚇一跳'],['nervous','緊張|不安|焦慮|忐忑|侷促|手足無措|猶豫'],['afraid','害怕|恐懼|驚恐|驚慌|畏懼|嚇壞'],['calm','平靜|冷靜|淡定|面無表情|淡然|若無其事']];
+const PV_EMO_VRE=new RegExp(PV_EMO_RE.map(e=>'('+e[1]+')').join('|'),'g');
+// emotion → body language the grey model can show (arms crossed, hands on hips, head down…); cats only use head/bend/tremble
+const PV_EMO_POSE={calm:{},happy:{head:-.12,bob:.35},sad:{head:.45,bend:.14,aRz:-.06,aLz:.06},angry:{aRz:.6,aLz:-.6,eR:1.6,eL:1.6,tR:1.57,tL:1.57,bend:.06,head:-.05},
+ surprised:{aRx:-.75,aLx:-.75,eR:1.3,eL:1.3,head:-.15,bend:-.06},nervous:{aRx:-.15,aLx:-.28,eR:1.57,eL:1.57,tR:1.25,tL:1.25,head:.2,trem:.25},afraid:{aRx:-.9,aLx:-.9,eR:2.0,eL:2.0,tR:.6,tL:.6,bend:.15,head:.25,trem:1}};
+const PV_AT={table:'桌前',seat:'座位',door:'門口',wall:'牆邊',window:'窗邊',counter:'櫃台前',bed:'床／沙發'};
+const PV_AT_EN={table:'at a table',seat:'on a seat',door:'at the door',wall:'by the wall',window:'by the window',counter:'at the counter',bed:'on the bed / sofa'};
+const PV_AT_RE=[['counter','櫃台|櫃檯|吧台|收銀'],['table','桌前|桌旁|桌邊|桌子|餐桌|書桌|枱前|枱邊|檯|枱|桌'],['bed','床上|床邊|床|沙發'],['seat','椅子|座位|長椅|椅上|椅'],['door','門口|門前|門外|門邊'],['window','窗邊|窗前|窗口|窗台|窗'],['wall','牆邊|牆角|牆上|牆']];
+const PV_PROP={
+ phone:{zh:'手機',en:'the phone',re:'手機|電話',size:[.075,.15,.014],col:'#2f3440'},
+ walkie:{zh:'對講機',en:'the walkie-talkie',re:'對講機',size:[.06,.18,.04],col:'#33363c'},
+ collar:{zh:'項圈',en:'the collar',re:'翻譯項圈|項圈',size:[.15,.035,.15],col:'#d9534f'},
+ cup:{zh:'杯子',en:'the cup',re:'杯子|茶杯|咖啡杯|奶茶|咖啡|杯',size:[.08,.11,.08],col:'#f6d28a',cyl:1},
+ key:{zh:'鑰匙',en:'the key',re:'鑰匙|門匙|鎖匙',size:[.05,.02,.09],col:'#dcdcdc'},
+ money:{zh:'錢',en:'the money',re:'鈔票|紅包|錢',size:[.15,.07,.02],col:'#7fc48a'},
+ flower:{zh:'花',en:'the flowers',re:'花束|花',size:[.1,.3,.1],col:'#e07bb5'},
+ bag:{zh:'袋子',en:'the bag',re:'紙袋|小袋|袋子|手袋|禮物|盒子|包包|袋|盒',size:[.24,.28,.12],col:'#c98a4b'},
+ letter:{zh:'信／紙',en:'the paper',re:'信封|信件|紙條|劇本|文件|相片|照片|卡片|書|信|紙',size:[.21,.15,.012],col:'#f2efe6'},
+ mic:{zh:'麥克風',en:'the microphone',re:'麥克風|話筒|咪',size:[.04,.18,.04],col:'#2b2b2b',cyl:1},
+ prop:{zh:'道具',en:'the prop',re:'道具|東西|物件|物品',size:[.12,.12,.12],col:'#f0b354'}
+};
+const PV_VERBS=[
+ ['遞來的|遞過來的|拿來的|送來的|交來的|打算|打扮|打量|看起來|看似|看來|希望|失望|渴望|盼望|願望|按照|按時|抱歉|抱怨|推薦|推測|推近|推進|推拉|推鏡|撞見|親自|親切|親人|一切|切換|舞台|吃驚|心跳|特寫|拉遠|拉近|站位|走位|切鏡|切到|切回|跳切|拍攝|戴著|穿著|洗手間|咬唇|咬著唇|咬牙|鏡中','skip'],
+ ['拍手|鼓掌','clap'],
+ ['拍照|自拍|打開(?!門)|拉開(?!門)|拉扯|跳舞|舞','unsup'],
+ ['接過|接住|接下|收下','receive'],
+ ['打電話|講電話|接電話|聽電話|講手機','call'],
+ ['低頭看手機|看手機|滑手機|玩手機|查看手機','phone'],
+ ['喝了一口|喝一口|喝著|喝|啜|呷|飲','drink'],
+ ['吃了一口|咬了一口|咬一口|吃著|吃','eat'],
+ ['寫字|寫信|寫著|寫|打字|簽名|簽字|簽','write'],
+ ['擦眼淚|擦淚|抹淚|哭泣|哭了|哭著|哭|流淚|落淚|啜泣','cry'],
+ ['哈哈大笑|大笑|笑了起來|笑起來|笑了|笑出聲|笑','laugh'],
+ ['托腮|托著下巴|沉思|思考','think'],
+ ['雙手抱胸|抱胸|抱臂|交叉雙手|環抱雙臂','crossarms'],
+ ['雙手叉腰|叉腰','akimbo'],
+ ['聳聳肩|聳肩|攤手','shrug'],
+ ['發抖|顫抖|打顫|哆嗦','tremble'],
+ ['伸懶腰|伸展|打哈欠','stretch'],
+ ['跪下|跪倒|跪地','kneel'],
+ ['跪著|跪在|跪','kneelState'],
+ ['躺下|躺倒','lie'],
+ ['躺著|躺在|躺','lieState'],
+ ['跌倒|摔倒|倒下|倒地|跌坐','fall'],
+ ['跳起來|跳了起來|跳起|蹦|跳','jump'],
+ ['親吻|親了|親|吻','kiss'],
+ ['扔給|丟給|拋給','give'],
+ ['扔|丟|拋|擲','throw'],
+ ['跑開|跑走|逃跑|逃走|跑掉','run'],
+ ['拿出手機|掏出手機|取出手機','pickupBody'],
+ ['搶走|搶過|搶去|搶回|奪走|奪過|奪去|搶|奪','snatch'],
+ ['遞給|遞上|遞過去|遞過|遞出|遞|交給|交到|送給|拿給|塞給|塞到','give'],
+ ['放下|放在|放到|放回|擱下|擱在|擺在|擺到|放進','putdown'],
+ ['拿出|掏出|取出','pickupBody'],
+ ['拿著|握著|捧著|提著|拎著|揣著','holdState'],
+ ['伸手去拿|伸手拿起|伸手拿|伸手取|伸手抓起|拿起|拾起|撿起|拎起|提起|抓起|握起|拿走|捧起|拿|撿|拾','pickup'],
+ ['推開門|推門|開門|拉開門|打開門|敲門|敲','door'],
+ ['按門鈴|按鈴|按掣|按鈕|按下|撳鐘|撳掣|撳|按','press'],
+ ['擁抱|相擁|抱住|抱緊|摟住|摟著|抱著|抱','hug'],
+ ['牽起[^，,。]{0,3}手|牽著[^，,。]{0,3}手|握住[^，,。]{0,3}手|拉住[^，,。]{0,3}手|牽手|握手|牽','hand'],
+ ['打招呼|揮揮手|揮手|招手|揮','wave'],
+ ['推開|推倒|推撞|推了一把|推一把|推|撞開|撞向|撞|打鬥|揍|毆打|打了|打','push'],
+ ['輕拍|拍拍|拍了拍|拍肩|拍|觸碰|碰了碰|碰碰|碰到|碰|輕觸|觸摸|撫摸|摸|撫','touch'],
+ ['坐下|坐回|坐到|入座','sit'],
+ ['坐在|坐著|坐於|坐','sitState'],
+ ['站起來|站起身|站起|起身|起立','stand'],
+ ['站著|站在|站|立於','skip'],
+ ['蹲下','squat'],
+ ['蹲著|蹲在|蹲','squatState'],
+ ['轉身離開|轉身離去|轉身走開','turnLeave'],
+ ['轉過身|轉身|回身|轉過去','turn'],
+ ['轉向|轉過來|面向|面對','face'],
+ ['鞠躬|彎腰|欠身','bow'],
+ ['點點頭|點頭','nod'],
+ ['搖搖頭|搖頭','shake'],
+ ['低下頭|低頭|垂下頭|垂頭|垂眸|垂下眼','headdown'],
+ ['抬起頭|抬頭|仰頭','headup'],
+ ['看向|望向|轉頭|回頭|扭頭|側頭|看著|望著|盯著|瞪著|注視|凝視|看了一眼|瞄|看|望','look'],
+ ['舉起手|舉手|舉高|舉起|高舉','raise'],
+ ['指向|指著|指了指','point'],
+ ['走向|走到|走近|走過去|走過來|走上前|走去|走來|靠近|上前|迎上|跑向|衝向|衝上前|奔向|走進|走入','approach'],
+ ['走開|離開|離去|走遠|走出','leave'],
+ ['後退|退後|退開|退了一步|退一步|退','stepback'],
+ ['奔跑|跑|衝','run'],
+ ['靠在|靠著|倚著|倚在|倚|靠','leanState'],
+ ['踢|摔|爬|跌|穿上|脫下|脫|戴上|戴|梳|化妝|關上|關門|拉|抓|揪|拖|甩|擦|洗|切|唱|開槍|拔|捏|咬|擰','unsup']
+];
+const PV_VRE=new RegExp(PV_VERBS.map(v=>'('+v[0]+')').join('|'),'g');
+const PV_SYN={
+  '主角 A':['主角A','男主','女主'],
+  '主角 B':['主角B','對方'],
+  '配角／長輩':['配角','長輩','媽媽','母親','媽','爸爸','父親','爸','老師','老闆'],
+  '朋友':['好友','閨蜜','同事','同學'],
+  '貓咪／寵物':['貓咪','寵物','貓','小貓','狗狗','小狗']
+};
+function pvEsc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function pvPropOf(s){ let best=null, bi=1e9; for(const k in PV_PROP){ const m=new RegExp(PV_PROP[k].re).exec(s); if(m&&m.index<bi){ bi=m.index; best=k; } } return best; }
+function pvAliases(cs){
+  const out=[], cats=cs.filter(c=>c.cat).length;
+  cs.forEach((c,i)=>{ const set=new Set([c.n,'角色'+'ABCD'[i]]);
+    const nv=c.n.replace(/\s*(v\d+\w*|母圖.*|五官.*)$/i,'').trim(); set.add(nv); set.add(nv.replace(/\s+/g,''));
+    const base=nv.split(/[（(]/)[0].trim(); if(base) set.add(base);
+    if(/[／/]/.test(base)) base.split(/[／/]/).forEach(w=>w.trim().length>=2&&set.add(w.trim()));
+    if(!/\s+[A-Za-z0-9]$/.test(base)){ const first=base.split(/\s+/)[0]; if(first.length>=2) set.add(first); }
+    if(cs.length===1 && /^主角/.test(nv)) set.add('主角');
+    if(c.cat&&cats===1) set.add('貓');
+    if(/^[A-Za-z]/.test(nv)) nv.split(/\s+/).forEach(w=>w.length>2&&set.add(w));
+    for(const k in PV_SYN) if(set.has(k)) PV_SYN[k].forEach(s=>set.add(s));
+    set.forEach(a=>{ if(a&&a.length>=1&&!/^[A-Za-z]$/.test(a)) out.push({a:a.toLowerCase(),id:c.id}); }); });
+  return out.sort((x,y)=>y.a.length-x.a.length);
+}
+function pvFindNames(cl,al){ const low=cl.toLowerCase(), res=[]; let i=0;
+  while(i<low.length){ const hit=al.find(x=>low.startsWith(x.a,i)); if(hit){ res.push({s:i,e:i+hit.a.length,id:hit.id}); i+=hit.a.length; } else i++; }
+  return res; }
+function pvParse(text,cs){
+  const R={steps:[],unsup:[],sitInit:[],holdInit:[],poseInit:[],emoInit:[],atInit:[],scene:null}; if(!text||!text.trim()) return R;
+  const al=pvAliases(cs), ids=cs.map(c=>c.id); let lastActor=null,lastTarget=null,lastProp=null;
+  { let bi=1e9; PV_SCENE_RE.forEach(([k,re])=>{ const m=new RegExp(re,'i').exec(text); if(m&&m.index<bi){ bi=m.index; R.scene=k; } }); }
+  const clauses=text.split(/[，,。．；;！!？?\n、]+|然後|接著|隨後|之後/).map(s=>s.trim()).filter(Boolean);
+  for(const cl of clauses){
+    if(/鏡頭|運鏡/.test(cl)) continue;
+    const names=pvFindNames(cl,al);
+    let masked=cl; names.forEach(n=>{ masked=masked.slice(0,n.s)+'　'.repeat(n.e-n.s)+masked.slice(n.e); });
+    // emotion words (state for the whole shot) are taken out before verb matching, so 「微笑」「吃驚」 are not read as 笑／吃
+    const emos=[]; PV_EMO_VRE.lastIndex=0; let em;
+    while((em=PV_EMO_VRE.exec(masked))){ const gi=em.slice(1).findIndex(x=>x!==undefined); emos.push({s:em.index,emo:PV_EMO_RE[gi][0]}); masked=masked.slice(0,em.index)+'　'.repeat(em[0].length)+masked.slice(em.index+em[0].length); }
+    const ats=[]; PV_AT_RE.forEach(([k,re])=>{ const m=new RegExp(re).exec(cl); if(m&&!ats.some(a=>a.s<=m.index&&m.index<a.e)) ats.push({s:m.index,e:m.index+m[0].length,at:k}); });
+    const whoAt=(i,fallback)=>{ const b=names.filter(n=>n.e<=i); return b.length?b[b.length-1].id:(fallback||lastActor||ids[0]); };
+    const clauseStart=lastActor, motions=[];
+    const ms=[]; PV_VRE.lastIndex=0; let m;
+    while((m=PV_VRE.exec(masked))){ const gi=m.slice(1).findIndex(x=>x!==undefined); if(PV_VERBS[gi][1]!=='skip') ms.push({s:m.index,e:m.index+m[0].length,txt:m[0],kind:PV_VERBS[gi][1]}); }
+    const used=new Set();
+    ms.forEach((mm,j)=>{
+      let kind=mm.kind; if(kind==='skip') return;
+      if(kind==='unsup'){ R.unsup.push({text:cl,verb:mm.txt}); return; }
+      const nextS=j+1<ms.length?ms[j+1].s:cl.length, prevE=j?ms[j-1].e:0, region=cl.slice(prevE,nextS);
+      let actor=null,target=null;
+      const before=names.filter(n=>n.e<=mm.s&&!used.has(n));
+      if(before.length){ const nb=before[before.length-1]; used.add(nb);
+        if(cl[nb.s-1]==='被'){ actor=nb.id; const subj=before.length>1?before[before.length-2]:null; if(subj){ target=subj.id; used.add(subj); } else target=lastActor&&lastActor!==actor?lastActor:null; }
+        else actor=nb.id; }
+      if(!actor) actor=lastActor||ids[0];
+      if(!target){ const af=names.find(n=>n.s>=mm.e&&n.s<nextS&&!used.has(n)&&n.id!==actor); if(af){ target=af.id; used.add(af); } }
+      if(kind==='sitState'){ if(!R.sitInit.includes(actor)) R.sitInit.push(actor); lastActor=actor; return; }
+      if(/^(kneel|lie|squat|lean)State$/.test(kind)){ const pose=kind.replace('State',''); if(!R.poseInit.some(x=>x.id===actor)) R.poseInit.push({id:actor,pose}); lastActor=actor; return; }
+      if(kind==='hug'&&/抱著/.test(mm.txt)&&pvPropOf(cl.slice(mm.e,nextS))) kind='holdState';
+      if(kind==='holdState'){ const pk=pvPropOf(cl.slice(mm.e,nextS))||pvPropOf(region)||lastProp||'prop'; R.holdInit.push({id:actor,prop:pk}); lastProp=pk; lastActor=actor; return; }
+      let acts=[kind];
+      if(kind==='turnLeave') acts=['turn','leave'];
+      if(kind==='receive'){ const giver=target||(lastTarget&&lastTarget!==actor?lastTarget:ids.find(x=>x!==actor)); if(!giver){ R.unsup.push({text:cl,verb:mm.txt,why:'需要兩個角色'}); return; } target=actor; actor=giver; acts=['give']; }
+      for(const act of acts){ const A=PV_A[act]; let tg=target;
+        if(A.pair===1&&!tg) tg=(lastTarget&&lastTarget!==actor)?lastTarget:(ids.find(x=>x!==actor)||null);
+        if(A.pair===1&&!tg){ R.unsup.push({text:cl,verb:mm.txt,why:'需要兩個角色（素材庫再選一位角色）'}); continue; }
+        if(A.pair==='opt'&&!tg&&/對方|對面|他|她|牠/.test(region)) tg=ids.find(x=>x!==actor)||null;
+        let prop=null; if(A.prop){ prop=pvPropOf(region)||A.defProp||lastProp||'prop'; lastProp=prop; }
+        { const ls=R.steps[R.steps.length-1]; if(ls&&ls.src===cl&&ls.who===actor&&ls.act===act) continue; } // 「托腮沉思」只算一次
+        R.steps.push({who:actor,act,tgt:A.pair?(tg||null):null,prop,src:cl,from:'text'});
+        if(act==='approach'||act==='leave'||act==='run') motions.push({s:mm.s,idx:R.steps.length-1,who:actor});
+        if(tg&&A.pair) lastTarget=tg; }
+      lastActor=actor;
+    });
+    const clauseActor=(ms.length&&lastActor)||clauseStart;
+    emos.forEach(e=>{ const id=whoAt(e.s,clauseActor); if(!R.emoInit.some(x=>x.id===id)) R.emoInit.push({id,emo:e.emo}); });
+    ats.forEach(a=>{ const mo=motions.filter(m=>m.s<a.s).pop(); const id=mo?mo.who:whoAt(a.s,clauseActor);
+      if(!R.atInit.some(x=>x.id===id)) R.atInit.push(mo?{id,at:a.at,stepRef:R.steps[mo.idx]}:{id,at:a.at}); });
+    if(names.length&&!ms.length&&!lastActor) lastActor=names[0].id;
+  }
+  return R;
+}
+function pvCards(R,cs){
+  const ids=cs.map(c=>c.id), a=ids[0], b=ids[1]||null, fam=k=>PV_FAM[k]||k, has=f=>R.steps.some(d=>fam(d.act)===f);
+  const bk=S.sel.body, bm={stand:'stand',turnb:'turn',hold:'pickup',touch:'touch',hug:'hug',fight:'push'};
+  if(bk&&bm[bk]&&!has(fam(bm[bk]))){ const act=bm[bk], A=PV_A[act], card=find('body',bk);
+    if(A.pair===1&&!b) R.unsup.push({text:`身體動作卡「${card.zh}」`,why:'需要兩個角色（素材庫再選一位角色）'});
+    else { const lp=R.steps.slice().reverse().find(d=>d.prop); R.steps.push({who:a,act,tgt:A.pair===1?b:null,prop:A.prop?((lp&&lp.prop)||'prop'):null,src:`身體動作卡「${card.zh}」`,from:'card'}); } }
+  const ak=S.sel.act, am={down:'headdown',turn:'look'};
+  if(ak&&am[ak]&&!has(am[ak])) R.steps.push({who:a,act:am[ak],tgt:null,prop:null,src:`表演卡「${find('act',ak).zh}」`,from:'card'});
+  return R;
+}
+function pvPlanDesc(cs){
+  cs=cs||pvChars(); const ids=cs.map(c=>c.id);
+  const auto=pvCards(pvParse(S.f.content||'',cs),cs);
+  const seq=(S.blk&&S.blk._seq)||[];
+  if(!seq.length) return Object.assign(auto,{manual:false});
+  const steps=[],unsup=[]; let lastProp=null;
+  seq.forEach((r,i)=>{ const A=PV_A[r.act]; if(!A) return;
+    if(!ids.includes(r.who)){ unsup.push({text:`手動第 ${i+1} 步`,why:'這個角色已不在素材選擇中'}); return; }
+    let tg=(r.tgt&&ids.includes(r.tgt)&&r.tgt!==r.who)?r.tgt:null;
+    if(A.pair===1&&!tg) tg=ids.find(x=>x!==r.who)||null;
+    if(A.pair===1&&!tg){ unsup.push({text:`手動第 ${i+1} 步「${A.zh}」`,why:'需要兩個角色（素材庫再選一位角色）'}); return; }
+    let prop=null; if(A.prop){ prop=r.prop||A.defProp||lastProp||'prop'; lastProp=prop; }
+    steps.push({who:r.who,act:r.act,tgt:A.pair?tg:null,prop,with:!!r.with,src:'手動',from:'manual'}); });
+  return {steps,unsup,sitInit:auto.sitInit,holdInit:[],poseInit:auto.poseInit,emoInit:auto.emoInit,atInit:auto.atInit.map(a=>({id:a.id,at:a.at})),scene:auto.scene,manual:true};
+}
+/* 每個角色的有效狀態：手動欄位（畫面內容補充）優先，否則用文字解析結果 */
+function pvStates(cs,D){
+  D=D||pvPlanDesc(cs); const man=(S.blk&&S.blk._st)||{}, out={};
+  cs.forEach(c=>{ const m=man[c.id]||{}, f=(arr,k)=>{ const x=(arr||[]).find(x=>x.id===c.id); return x?x[k]:''; };
+    const auto={pose:D.sitInit.includes(c.id)?'sit':(f(D.poseInit,'pose')||''), emo:f(D.emoInit,'emo')||'', hold:f(D.holdInit,'prop')||'', at:f(D.atInit,'at')||''};
+    if(!auto.pose&&auto.at==='seat') auto.pose='sit';
+    const atRef=(D.atInit||[]).find(x=>x.id===c.id);
+    out[c.id]={auto, man:m, pose:m.pose||auto.pose||'stand', emo:m.emo||auto.emo||'calm', hold:m.hold?(m.hold==='none'?'':m.hold):auto.hold, at:m.at?(m.at==='none'?'':m.at):auto.at, atRef:(!m.at&&atRef&&atRef.stepRef)||null}; });
+  return out;
+}
+function pvSceneOf(D){
+  const m=S.blk&&S.blk._scene; if(m&&PV_SCENE[m]) return {k:m,src:'manual'};
+  D=D||pvPlanDesc(); if(D.scene) return {k:D.scene,src:'text'};
+  const sa=assetRefs().find(r=>r.a.scene&&PV_SCENE_OF[r.a.id]); if(sa) return {k:PV_SCENE_OF[sa.a.id],src:'asset',n:sa.a.n};
+  return {k:'street',src:'default'};
+}
+function pvName(id,cs){ const c=cs.find(c=>c.id===id); return c?c.n:'?'; }
+function pvStepLabel(d,cs){ const A=PV_A[d.act]; let s=pvName(d.who,cs)+' '+A.zh; if(A.pair&&d.tgt) s+=' '+pvName(d.tgt,cs); if(A.prop) s+='（'+PV_PROP[d.prop||'prop'].zh+'）'; return s; }
+function pvStepLabelEn(d,cs){ const en=id=>(ASSET[id]&&ASSET[id].en)||pvName(id,cs); const A=PV_A[d.act]; let s=en(d.who)+' '+A.en; if(A.pair&&d.tgt) s+=' '+en(d.tgt); if(A.prop) s+=' ('+PV_PROP[d.prop||'prop'].en+')'; return s; }
+function pvSchedule(list,dur){
+  const groups=[]; list.forEach(d=>{ if(d.with&&groups.length) groups[groups.length-1].push(d); else groups.push([d]); });
+  const lead=Math.min(.3,dur*.08), tail=Math.min(.45,dur*.1), avail=Math.max(.5,dur-lead-tail);
+  const ws=groups.map(g=>Math.max(...g.map(d=>PV_A[d.act].w))), tot=ws.reduce((a,b)=>a+b,0)||1;
+  let t=lead; const out=[]; groups.forEach((g,i)=>{ const len=avail*ws[i]/tot; g.forEach(d=>out.push({d,t0:t,t1:t+len})); t+=len; });
+  return out;
+}
+const PV_Z={aRx:0,aRz:0,aLx:0,aLz:0,bend:0,head:0,look:0,sit:0,app:0,back:0,fwd:0,face:0,spin:0,walk:0,wave:0,nod:0,shake:0,ox:0,oz:0,
+  eR:0,eL:0,tR:0,tL:0,kneel:0,lie:0,sq:0,trem:0,bob:0,sob:0,clap:0,jump:0,elev:0};
+function pvMk(d,c){
+  const A=d.who,B=d.tgt,H=c.H,O=c.O,ax='a'+H+'x',bx='a'+O+'x';
+  const W0={p:.05,v:{walk:1}}, go=(pe)=>[W0,{p:pe,v:{app:1,face:1,walk:1}},{p:pe+.04,v:{walk:0}}];
+  const R=(id,kf,o)=>Object.assign({id,kf},o||{});
+  switch(d.act){
+   case 'pickup': return [R(A,[{p:.45,v:{[ax]:-1.15,bend:.35,head:.35}},{p:.75,v:{[ax]:-.95,bend:.12,head:.15}},{p:1,v:{[ax]:-.7,bend:0,head:.1}}])];
+   case 'pickupBody': return [R(A,[{p:.3,v:{[ax]:-.25}},{p:.7,v:{[ax]:-.85,head:.2}},{p:1,v:{[ax]:-.75,head:.1}}])];
+   case 'putdown': return [R(A,[{p:.45,v:{[ax]:-1.1,bend:.35,head:.35}},{p:.75,v:{[ax]:-.5,bend:.1,head:.1}},{p:1,v:{[ax]:0,bend:0,head:0}}])];
+   case 'phone': return [R(A,[{p:.4,v:{[ax]:-1.05,['a'+H+'z']:H==='R'?-.35:.35,head:.5}},{p:1,v:{}}])];
+   case 'give': return [R(A,[...go(.32),{p:.55,v:{[ax]:-1.35,bend:.1}},{p:.68,v:{[ax]:-1.3}},{p:.88,v:{[ax]:-.2,bend:0}},{p:1,v:{[ax]:0}}],{tgt:B,reach:1,share:1,wneed:1}),
+                        R(B,[{p:.32,v:{face:1}},{p:.58,v:{[bx]:-1.15,bend:.05}},{p:.85,v:{[bx]:-.75,bend:0}},{p:1,v:{[bx]:-.7}}],{tgt:A,reach:1,share:0})];
+   case 'snatch': { const gx='a'+H+'x', vx='a'+c.V+'x';
+     return [R(A,[...go(.3),{p:.5,v:{[gx]:-1.4,bend:.18}},{p:.62,v:{[gx]:-1.2}},{p:.8,v:{[gx]:-.5,bend:-.08}},{p:1,v:{[gx]:-.7,bend:0}}],{tgt:B,reach:.85,share:1,wneed:1}),
+             R(B,[{p:.3,v:{face:1}},{p:.5,v:{[vx]:-.75}},{p:.6,v:{[vx]:-.9}},{p:.72,v:{[vx]:-1.25,bend:.2,back:.12}},{p:.9,v:{[vx]:-.4,bend:0}},{p:1,v:{[vx]:0}}],{tgt:A,reach:.85,share:0})]; }
+   case 'hug': { const arms={aRx:-1.3,aRz:-.5,aLx:-1.3,aLz:.5};
+     return [R(A,[W0,{p:.4,v:{app:1,face:1,walk:1}},{p:.44,v:{walk:0}},{p:.7,v:Object.assign({bend:.06},arms)},{p:1,v:arms}],{tgt:B,reach:.42,share:.5,wneed:1}),
+             R(B,[W0,{p:.4,v:{app:1,face:1,walk:1}},{p:.44,v:{walk:0}},{p:.72,v:Object.assign({bend:.06,head:.1},arms)},{p:1,v:arms}],{tgt:A,reach:.42,share:.5,wneed:1})]; }
+   case 'push': return [R(A,[...go(.3),{p:.45,v:{aRx:-1.0,aLx:-1.0,bend:-.05}},{p:.55,v:{aRx:-1.55,aLx:-1.55,bend:.28}},{p:.78,v:{aRx:-.8,aLx:-.8,bend:.05}},{p:1,v:{aRx:0,aLx:0,bend:0}}],{tgt:B,reach:.72,share:1,wneed:1}),
+                        R(B,[{p:.3,v:{face:1}},{p:.52,v:{}},{p:.7,v:{back:.75,bend:-.32,aRz:.6,aLz:-.6,head:-.2}},{p:1,v:{back:.85,bend:-.05,aRz:.12,aLz:-.12,head:0}}],{tgt:A,reach:.72,share:0})];
+   case 'touch': return [R(A,[...go(.35),{p:.62,v:{aRx:-1.4,bend:.08}},{p:.82,v:{aRx:-1.4}},{p:1,v:{aRx:-.1,bend:0}}],{tgt:B,reach:.78,share:1,wneed:1}),
+                         R(B,[{p:.35,v:{face:.8}},{p:.7,v:{head:.15}},{p:1,v:{head:0}}],{tgt:A,reach:.78,share:0})];
+   case 'hand': return [R(A,[...go(.35),{p:.62,v:{aRx:-.75,aRz:-.15}},{p:1,v:{aRx:-.75,aRz:-.15}}],{tgt:B,reach:.75,share:1,wneed:1}),
+                        R(B,[{p:.35,v:{face:1}},{p:.66,v:{aLx:-.75,aLz:.15}},{p:1,v:{aLx:-.75,aLz:.15}}],{tgt:A,reach:.75,share:0})];
+   case 'approach': return B?[R(A,[W0,{p:.88,v:{app:1,face:1,walk:1}},{p:1,v:{walk:0}}],{tgt:B,reach:1,share:1,wneed:1})]
+                            :[R(A,[W0,{p:.88,v:{fwd:s=>s.fwd+1,walk:1}},{p:1,v:{walk:0}}],{tgt:null})];
+   case 'face': return [R(A,[{p:.8,v:{face:1}},{p:1,v:{}}],{tgt:B,reach:1,share:0})];
+   case 'look': return [R(A,[{p:.5,v:{look:1}},{p:1,v:{}}],B?{tgt:B,reach:1,share:0}:undefined)];
+   case 'point': return [R(A,[{p:.45,v:{aRx:-1.5,face:B?.7:0}},{p:1,v:{}}],B?{tgt:B,reach:1,share:0}:undefined)];
+   case 'leave': return [R(A,[W0,{p:.9,v:{fwd:s=>s.fwd+1.4,walk:1}},{p:1,v:{walk:0}}],{tgt:null})];
+   case 'stepback': return [R(A,[W0,{p:.8,v:{back:s=>s.back+.5,walk:1}},{p:1,v:{walk:0}}])];
+   case 'turn': return [R(A,[{p:.1,v:{}},{p:.9,v:{spin:s=>s.spin+Math.PI}},{p:1,v:{}}],{tgt:null})];
+   case 'sit': return [R(A,[{p:.15,v:{bend:.1}},{p:.6,v:{sit:.8,bend:.25}},{p:.9,v:{sit:1,bend:.05}},{p:1,v:{bend:0}}])];
+   case 'stand': return [R(A,[{p:.3,v:{bend:.3}},{p:.75,v:{sit:.2,bend:.2}},{p:1,v:{sit:0,bend:0}}])];
+   case 'squat': return [R(A,[{p:.7,v:{sq:1,bend:.4,head:.1}},{p:1,v:{}}])];
+   case 'bow': return [R(A,[{p:.4,v:{bend:.75,head:.2}},{p:.65,v:{bend:.75}},{p:1,v:{bend:0,head:0}}])];
+   case 'nod': return [R(A,[{p:.15,v:{nod:1}},{p:.85,v:{nod:1}},{p:1,v:{nod:0}}])];
+   case 'shake': return [R(A,[{p:.15,v:{shake:1}},{p:.85,v:{shake:1}},{p:1,v:{shake:0}}])];
+   case 'headdown': return [R(A,[{p:.8,v:{head:.55}},{p:1,v:{}}])];
+   case 'headup': return [R(A,[{p:.8,v:{head:-.3}},{p:1,v:{}}])];
+   case 'wave': return [R(A,[{p:.25,v:{aRz:2.5,wave:1}},{p:.8,v:{aRz:2.5,wave:1}},{p:1,v:{aRz:0,wave:0}}])];
+   case 'raise': return [R(A,[{p:.6,v:{aRx:-2.9}},{p:1,v:{}}])];
+   case 'press': case 'door': return [R(A,[{p:.45,v:{aRx:-1.45,bend:.05}},{p:.75,v:{aRx:-1.45}},{p:1,v:{aRx:0,bend:0}}])];
+   case 'drink': { const eh='e'+H, th='t'+H; return [R(A,[{p:.35,v:{[ax]:-1.9,[eh]:2.0,[th]:1.2,head:-.12}},{p:.7,v:{[ax]:-1.9,[eh]:2.0,head:-.2}},{p:1,v:{[ax]:-.55,[eh]:0,[th]:0,head:0}}])]; }
+   case 'eat': return [R(A,[{p:.25,v:{aRx:-1.9,eR:2.0,tR:1.2}},{p:.45,v:{aRx:-1.5,eR:1.7}},{p:.65,v:{aRx:-1.9,eR:2.0}},{p:1,v:{aRx:0,eR:0,tR:0}}])];
+   case 'call': { const eh='e'+H, th='t'+H, zh='a'+H+'z'; return [R(A,[{p:.35,v:{[ax]:-2.1,[zh]:H==='R'?-.1:.1,[eh]:2.3,[th]:.6,head:.05}},{p:1,v:{}}])]; }
+   case 'write': return [R(A,[{p:.2,v:{bend:.3,head:.45,aRx:-.95,eR:.55,aLx:-.8,eL:.6}},{p:.4,v:{tR:.25}},{p:.6,v:{tR:-.1}},{p:.8,v:{tR:.25}},{p:1,v:{tR:0}}])];
+   case 'throw': return [R(A,[{p:.35,v:{[ax]:-2.6,bend:-.1}},{p:.55,v:{[ax]:-1.0,bend:.15}},{p:1,v:{[ax]:0,bend:0}}])];
+   case 'cry': return [R(A,[{p:.35,v:{aRx:-1.8,aRz:-.1,eR:1.9,tR:.8,aLx:-1.8,aLz:.1,eL:1.9,tL:.8,head:.35,bend:.15}},{p:.45,v:{sob:1}},{p:1,v:{}}])];
+   case 'laugh': return [R(A,[{p:.2,v:{head:-.25,bob:1,bend:-.05}},{p:.85,v:{bob:1}},{p:1,v:{bob:0,head:-.1,bend:0}}])];
+   case 'clap': return [R(A,[{p:.2,v:{aRx:-1.15,aLx:-1.15,aRz:-.35,aLz:.35,eR:.7,eL:.7,clap:1}},{p:.85,v:{clap:1}},{p:1,v:{clap:0,aRx:0,aLx:0,aRz:0,aLz:0,eR:0,eL:0}}])];
+   case 'think': return [R(A,[{p:.5,v:{aRx:-1.9,aRz:-.1,eR:2.0,tR:1.4,aLx:-.4,eL:1.57,tL:1.3,head:.12}},{p:1,v:{}}])];
+   case 'crossarms': return [R(A,[{p:.7,v:{aRx:-.15,aLx:-.28,aRz:0,aLz:0,eR:1.57,eL:1.57,tR:1.25,tL:1.25}},{p:1,v:{}}])];
+   case 'akimbo': return [R(A,[{p:.7,v:{aRx:0,aLx:0,aRz:.6,aLz:-.6,eR:1.6,eL:1.6,tR:1.57,tL:1.57}},{p:1,v:{}}])];
+   case 'shrug': return [R(A,[{p:.3,v:{aRz:.3,aLz:-.3,eR:1.4,eL:1.4,tR:-.5,tL:-.5,head:-.05}},{p:.7,v:{}},{p:1,v:{aRz:0,aLz:0,eR:0,eL:0,tR:0,tL:0,head:0}}])];
+   case 'tremble': return [R(A,[{p:.15,v:{trem:1,aRx:-.5,aLx:-.5,eR:1.8,eL:1.8,tR:.8,tL:.8,bend:.12,head:.2}},{p:1,v:{trem:1}}])];
+   case 'stretch': return [R(A,[{p:.4,v:{aRx:-2.9,aLx:-2.9,eR:0,eL:0,head:-.25,bend:-.1}},{p:.7,v:{}},{p:1,v:{aRx:0,aLx:0,head:0,bend:0}}])];
+   case 'kneel': return [R(A,[{p:.2,v:{bend:.15}},{p:.75,v:{kneel:1,bend:.1}},{p:1,v:{bend:.05}}])];
+   case 'lie': return [R(A,[{p:.3,v:{sit:.7,bend:.3}},{p:.55,v:{sit:.4,bend:0}},{p:.95,v:{sit:0,lie:1}},{p:1,v:{}}])];
+   case 'fall': return [R(A,[{p:.25,v:{back:s=>s.back+.2,bend:-.2,aRz:.8,aLz:-.8}},{p:.7,v:{lie:1,bend:0}},{p:1,v:{aRz:.3,aLz:-.3}}])];
+   case 'jump': return [R(A,[{p:.25,v:{sit:.25,bend:.2}},{p:.5,v:{sit:0,jump:.4,aRz:1.6,aLz:-1.6,bend:0}},{p:.75,v:{jump:0,aRz:0,aLz:0,sit:.15}},{p:1,v:{sit:0}}])];
+   case 'run': return [R(A,[W0,{p:.9,v:{fwd:s=>s.fwd+2.6,walk:1.6}},{p:1,v:{walk:0}}],{tgt:null})];
+   case 'kiss': return [R(A,[W0,{p:.4,v:{app:1,face:1,walk:1}},{p:.44,v:{walk:0}},{p:.7,v:{bend:.12,head:.15,aRx:-.6,aRz:-.2}},{p:1,v:{}}],{tgt:B,reach:.36,share:.5,wneed:1}),
+                        R(B,[W0,{p:.4,v:{app:1,face:1,walk:1}},{p:.44,v:{walk:0}},{p:.72,v:{bend:.06,head:-.1,aLx:-.6,aLz:.2}},{p:1,v:{}}],{tgt:A,reach:.36,share:.5,wneed:1})];
+   default: return [R(A,[{p:1,v:{}}])];
+  }
+}
+function pvBuildPlan(cs,D){
+  const ids=cs.map(c=>c.id);
+  const plan={cs,steps:[],props:{},init:{},spots:[],D}; ids.forEach(id=>plan.init[id]={});
+  const list=D.steps.filter(d=>ids.includes(d.who)&&PV_A[d.act]&&(PV_A[d.act].pair!==1||ids.includes(d.tgt)));
+  const sch=pvSchedule(list,S.dur);
+  const E=pvStates(cs,D); plan.E=E; plan.base={};
+  // 情緒 → 開場身體姿態（之後每個動作做完會回到這個姿態）
+  cs.forEach(c=>{ const ep=PV_EMO_POSE[E[c.id].emo]||{}, b={};
+    for(const k in ep){ if(c.cat&&!/^(head|bend|trem|bob)$/.test(k)) continue; b[k]=ep[k]; }
+    plan.base[c.id]=b; Object.assign(plan.init[c.id],b); });
+  ids.forEach(id=>{ const f=list.find(d=>d.who===id&&(d.act==='sit'||d.act==='stand')), e=E[id], ini=plan.init[id];
+    const sofa=e.at==='bed';
+    if((f&&f.act==='stand')||(e.pose==='sit'&&!(f&&f.act==='sit'))){ ini.sit=1; plan.spots.push({kind:'chair',t:0,id,sofa}); }
+    else if(e.pose==='kneel') ini.kneel=1;
+    else if(e.pose==='squat'){ ini.sq=1; ini.bend=Math.max(ini.bend||0,.4); }
+    else if(e.pose==='lie'){ ini.lie=1; if(sofa) ini.elev=.45; }
+    else if(e.pose==='lean'){ ini.bend=-.1; }
+    // 在哪：位置參照（桌、門、牆、窗、櫃台、床）在角色身邊擺出灰模
+    const at=e.at||(e.pose==='lean'?'wall':''), usesTable=list.some(d=>d.who===id&&(d.act==='pickup'||d.act==='putdown'));
+    if(at&&at!=='seat'&&!(at==='table'&&usesTable)&&!(at==='bed'&&e.pose==='sit')){ let t=0; if(e.atRef){ const s=sch.find(x=>x.d===e.atRef); if(s) t=s.t1; } plan.spots.push({kind:'at_'+at,t,id,lie:e.pose==='lie'}); } });
+  const hold={}, useP=k=>plan.props[k]||(plan.props[k]={type:k,init:null,hidden:false,rest0:null,used:false});
+  const down={}; ids.forEach(id=>{ const q=plan.init[id]; down[id]=!!(q.sit||q.kneel||q.lie||q.sq); });
+  const holdList=ids.filter(id=>E[id].hold).map(id=>({id,prop:E[id].hold}));
+  holdList.forEach(h=>{ const q=useP(h.prop); if(q.used) return; q.init={id:h.id,hand:'R'}; q.used=true; hold[h.prop]=q.init; Object.assign(plan.init[h.id],{aRx:-.55,aRz:0,eR:0,tR:0}); ['aRx','aRz','eR','tR'].forEach(k=>delete plan.base[h.id][k]); });
+  sch.forEach(({d,t0,t1})=>{
+    const A=PV_A[d.act], c={H:'R',O:'L',V:'L'}, evs=[], T=p=>t0+p*(t1-t0); let pk=null;
+    if(A.prop){ pk=d.prop||'prop'; const q=useP(pk), cur=hold[pk];
+      if(d.act==='snatch'){ if(!cur&&!q.used){ q.init={id:d.tgt,hand:'L'}; plan.init[d.tgt].aLx=-.55; hold[pk]=q.init; } c.V=(hold[pk]&&hold[pk].hand)||'L'; c.H=c.V==='R'?'L':'R'; }
+      else if(d.act==='pickup'){ if(cur&&cur.id===d.who) c.H=cur.hand; else if(!cur&&!q.used){ q.rest0=plan.spots.push({kind:'table',t:T(.47),id:d.who,hand:'R',prop:pk})-1; } }
+      else if(d.act==='pickupBody'){ if(!cur&&!q.used){ q.init={id:d.who,hand:'R'}; q.hidden=true; hold[pk]=q.init; } else if(cur&&cur.id===d.who) c.H=cur.hand; }
+      else { if(!cur&&!q.used){ q.init={id:d.who,hand:'R'}; hold[pk]=q.init; plan.init[d.who].aRx=-.55; } const c2=hold[pk]; if(c2&&c2.id===d.who) c.H=c2.hand; }
+      if(d.act!=='snatch') c.O=c.H==='R'?'L':'R'; q.used=true; }
+    const roles=pvMk(d,c);
+    roles.forEach(r=>{ const base=plan.base[r.id]; if(!base||!r.kf.length) return; const k0=r.kf.find(k=>k.p>0)||r.kf[0], last=r.kf[r.kf.length-1];
+      for(const sd of ['R','L']){ const uses=r.kf.some(k=>('a'+sd+'x' in k.v)||('a'+sd+'z' in k.v)), bendsElbow=r.kf.some(k=>'e'+sd in k.v);
+        if(uses&&!bendsElbow&&(base['e'+sd]||base['t'+sd])){ k0.v=Object.assign({['e'+sd]:0,['t'+sd]:0},k0.v);
+          if(last.p===1&&last.v['a'+sd+'x']===0){ last.v['e'+sd]=base['e'+sd]||0; last.v['t'+sd]=base['t'+sd]||0; } } }
+      if(last.p===1) for(const k in last.v) if(last.v[k]===0&&base[k]!==undefined) last.v[k]=base[k]; });
+    // 坐著／跪著／躺著的人不會走過去：雙人動作改由另一人走近
+    roles.forEach(r=>{ if(r.share>0&&down[r.id]){ const o=roles.find(x=>x!==r&&x.tgt===r.id); if(o&&!down[o.id]){ r.share=0; o.share=1; o.wneed=1;
+      if(!o.kf.some(k=>'app' in k.v)){ const ap=(r.kf.find(k=>k.v.app)||{p:.32}).p; o.kf=o.kf.concat([{p:.05,v:{walk:1}},{p:ap,v:{app:1,face:1,walk:1}},{p:ap+.04,v:{walk:0}}]).sort((a,b)=>a.p-b.p); } } } });
+    if(['sit','kneel','lie','fall','squat'].includes(d.act)) down[d.who]=true; if(d.act==='stand') down[d.who]=false;
+    if(d.act==='throw'){ evs.push({kind:'throw',p:.5,w:.14,prop:pk}); hold[pk]=null; }
+    if(d.act==='pickup'){ evs.push({kind:'grab',p:.47,prop:pk,to:{id:d.who,hand:c.H}}); hold[pk]={id:d.who,hand:c.H}; }
+    if(d.act==='pickupBody'){ evs.push({kind:'show',p:.3,prop:pk}); evs.push({kind:'grab',p:.3,prop:pk,to:{id:d.who,hand:c.H}}); hold[pk]={id:d.who,hand:c.H}; }
+    if(d.act==='putdown'){ const si=plan.spots.push({kind:'table',t:T(.47),id:d.who,hand:c.H,prop:pk})-1; evs.push({kind:'release',p:.47,prop:pk,spot:si}); hold[pk]=null; }
+    if(d.act==='give'){ evs.push({kind:'give',p:.6,w:.06,prop:pk,to:{id:d.tgt,hand:c.O}}); hold[pk]={id:d.tgt,hand:c.O}; }
+    if(d.act==='snatch'){ evs.push({kind:'give',p:.56,w:.05,prop:pk,to:{id:d.who,hand:c.H}}); hold[pk]={id:d.who,hand:c.H}; }
+    if(d.act==='press'||d.act==='door'){ const si=plan.spots.push({kind:d.act==='press'?'bell':'door',t:T(.47),id:d.who,hand:'R',litT:T(.5)})-1; evs.push({kind:'lit',p:.5,spot:si}); }
+    if(d.act==='sit') plan.spots.push({kind:'chair',t:t1,id:d.who});
+    plan.steps.push({t0,t1,roles,evs,d});
+  });
+  plan.active=!!(plan.steps.length||Object.keys(plan.props).length||plan.spots.length);
+  return plan;
+}
+function pvAng(a,b,k){ const d=((b-a+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; return a+d*k; }
+function pvResolve(s,p,pos,all){
+  let x=p.x+s.ox, z=p.z+s.oz, ry=p.ry+s.spin, need=1, tyaw=null;
+  let tp=s.tgt&&pos[s.tgt];
+  // 目標的位置要算上它之前的動作（例如先走近再擁抱），否則兩人會互相穿過
+  if(tp&&all&&all[s.tgt]) tp={x:tp.x+all[s.tgt].ox, z:tp.z+all[s.tgt].oz};
+  if(tp){ const dx=tp.x-p.x, dz=tp.z-p.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d, gap=Math.max(0,d-s.reach)*s.share; need=Math.min(1,gap/.3);
+    x+=ux*(gap*s.app-s.back); z+=uz*(gap*s.app-s.back); tyaw=Math.atan2(tp.x-x,tp.z-z); ry=pvAng(ry,tyaw,s.face); }
+  else { x-=Math.sin(ry)*s.back; z-=Math.cos(ry)*s.back; }
+  x+=Math.sin(ry)*s.fwd; z+=Math.cos(ry)*s.fwd;
+  return {x,z,ry,need,tyaw};
+}
+function pvBake(s,p,pos,all){ const r=pvResolve(s,p,pos,all); s.ox=r.x-p.x; s.oz=r.z-p.z; s.spin=r.ry-p.ry; s.app=0; s.back=0; s.fwd=0; s.face=0; }
+function pvKF(s,kfs,p){
+  const st0={}; for(const k in PV_Z) st0[k]=s[k];
+  let cur=Object.assign({},st0), curP=0;
+  for(const kf of kfs){ const nxt=Object.assign({},cur); for(const k in kf.v){ const v=kf.v[k]; nxt[k]=typeof v==='function'?v(st0):v; }
+    if(p<kf.p){ const u=(p-curP)/Math.max(1e-6,kf.p-curP), e=u*u*(3-2*u); for(const k in PV_Z) s[k]=cur[k]+(nxt[k]-cur[k])*e; return; }
+    cur=nxt; curP=kf.p; }
+  for(const k in PV_Z) s[k]=cur[k];
+}
+function pvPose(t,plan,pos){
+  const st={}; plan.cs.forEach(c=>{ st[c.id]=Object.assign({},PV_Z,{tgt:null,reach:1,share:1,wneed:0},plan.init[c.id]); });
+  const pr={}; for(const k in plan.props){ const q=plan.props[k]; pr[k]={holder:q.init?{...q.init}:null,rest:q.rest0,visible:!q.hidden,trans:null}; }
+  const lit=new Set();
+  for(const s of plan.steps){ if(t<s.t0) continue; const p=Math.min(1,(t-s.t0)/Math.max(1e-6,s.t1-s.t0));
+    for(const r of s.roles){ const q=st[r.id]; if(!q) continue;
+      if(r.tgt!==undefined){ const tg=r.tgt||null, re=r.reach||1, sh=r.share==null?1:r.share;
+        if(q.tgt!==tg||q.reach!==re||q.share!==sh){ if(pos[r.id]) pvBake(q,pos[r.id],pos,st); q.tgt=tg; q.reach=re; q.share=sh; }
+        q.wneed=r.wneed?1:0; }
+      pvKF(q,r.kf,p); }
+    for(const e of s.evs){
+      if(e.kind==='lit'){ if(p>=e.p) lit.add(e.spot); continue; }
+      const o=pr[e.prop]; if(!o) continue;
+      if(e.kind==='show'){ if(p>=e.p) o.visible=true; }
+      else if(e.kind==='grab'){ if(p>=e.p){ o.holder={...e.to}; o.rest=null; } }
+      else if(e.kind==='release'){ if(p>=e.p){ o.holder=null; o.rest=e.spot; } }
+      else if(e.kind==='give'){ if(p>=e.p+e.w){ o.holder={...e.to}; o.trans=null; } else if(p>=e.p-e.w){ o.trans={from:o.holder?{...o.holder}:null,to:e.to,s:(p-(e.p-e.w))/(2*e.w)}; } }
+      else if(e.kind==='throw'){ if(p>=e.p+e.w){ o.holder=null; o.visible=false; o.fly=null; } else if(p>=e.p&&o.holder){ o.fly={h:{...o.holder},s:(p-e.p)/e.w}; } }
+    } }
+  return {st,props:pr,lit};
+}
+function pvPoseApply(P,cs,pos,t,ev){
+  cs.forEach(c=>{ const g=P.people[c.id], p=pos[c.id], pt=g.userData.parts, s=ev&&ev.st[c.id];
+    let x=p.x, z=p.z, ry=p.ry, wa=p.moving?1:0, sit=0, headY=0;
+    const v=k=>s?s[k]:0;
+    if(s){ const r=pvResolve(s,p,pos,ev.st); x=r.x; z=r.z; ry=r.ry; wa=Math.max(wa,s.walk*(s.wneed?r.need:1)); sit=s.sit;
+      headY=s.look*(r.tyaw!=null?Math.max(-1.1,Math.min(1.1,pvAng(0,r.tyaw-ry,1))):.7)+Math.sin(t*9)*.4*s.shake; }
+    const nod=(1-Math.cos(t*9))*.5*.35*v('nod');
+    const kn=v('kneel'), sq=v('sq'), li=v('lie'), still=(1-Math.min(1,kn))*(1-Math.min(1,sq))*(1-Math.min(1,li));
+    const trem=Math.sin(t*38)*.03*v('trem'), bob=Math.abs(Math.sin(t*7))*.07*v('bob'), sob=Math.sin(t*5.5)*.05*v('sob');
+    g.position.set(x,(pt.cat?-.06*Math.max(sit,kn,sq)-.1*li:-.42*sit-.31*kn-.5*sq+.13*li)+v('jump')+v('elev'),z); g.rotation.y=ry; g.rotation.x=-1.5708*li;
+    const sw=Math.sin(t*7)*0.55*wa*(1-sit)*still;
+    if(pt.cat){ pt.legs.forEach((l,j)=>l.rotation.x=(j%2?1:-1)*sw*0.6+(j===1?v('aRx')*.6:j===0?v('aLx')*.6:0)+1.2*Math.max(kn,sq));
+      pt.up.rotation.x=v('bend')*.6-.3*sit+bob+sob; pt.up.rotation.z=trem; pt.head.rotation.x=v('head')+nod; pt.head.rotation.y=headY; }
+    else { const fr=k=>1-Math.min(1,Math.abs(v(k))/.5);
+      pt.lL.rotation.x=sw-1.5708*sit-1.75*sq; pt.lR.rotation.x=-sw-1.5708*sit-1.75*sq; pt.lL.userData.knee.rotation.x=1.5708*sit+1.5708*kn+2.1*sq; pt.lR.userData.knee.rotation.x=1.5708*sit+1.5708*kn+2.1*sq;
+      const clap=Math.sin(t*14)*.2*v('clap');
+      pt.aL.rotation.x=v('aLx')-sw*0.8*fr('aLx'); pt.aR.rotation.x=v('aRx')+sw*0.8*fr('aRx');
+      pt.aL.rotation.z=v('aLz')+clap; pt.aR.rotation.z=v('aRz')+Math.sin(t*10)*.35*v('wave')-clap;
+      const eR=pt.aR.userData.elbow, eL=pt.aL.userData.elbow;
+      if(eR){ eR.rotation.x=-v('eR'); eR.rotation.y=-v('tR'); eL.rotation.x=-v('eL'); eL.rotation.y=v('tL'); }
+      pt.up.rotation.x=v('bend')+bob+sob; pt.up.rotation.z=trem; pt.head.rotation.x=v('head')+nod+sob*.6; pt.head.rotation.y=headY; }
+  });
+}
+function pvPrecompute(P,plan,cs){
+  const v=new THREE.Vector3();
+  plan.spots.forEach(sp=>{ const pos=pvPlace(cs,sp.t), ev=pvPose(sp.t,plan,pos); pvPoseApply(P,cs,pos,sp.t,ev); const g=P.people[sp.id]; if(!g) return; g.updateMatrixWorld(true);
+    if(sp.kind==='chair'||sp.kind.startsWith('at_')){ sp.pos=new THREE.Vector3(g.position.x,0,g.position.z); } else { g.userData.parts['h'+sp.hand].getWorldPosition(v); sp.pos=v.clone(); }
+    sp.yaw=g.rotation.y;
+    // 門、牆、窗放在角色身後（相對鏡頭），不擋住同一排的其他人
+    if(/^at_(door|wall|window)$/.test(sp.kind)){ const z0=g.position.z, zs=cs.map(c=>pos[c.id].z).filter(z=>Math.abs(z-z0)<1.5); sp.pos.z=Math.min(z0,...zs); sp.yaw=0; } });
+  // 兩個角色都在「桌前」而且距離近：合併成同一張桌放在兩人中間
+  { const ds=plan.spots.filter(sp=>sp.kind==='at_table'&&sp.pos);
+    if(ds.length===2&&ds[0].pos.distanceTo(ds[1].pos)<2.8){ const [a,b]=ds, dx=b.pos.x-a.pos.x, dz=b.pos.z-a.pos.z, L=Math.hypot(dx,dz)||1;
+      a.kind='at_table2'; a.mid=new THREE.Vector3((a.pos.x+b.pos.x)/2,0,(a.pos.z+b.pos.z)/2); a.len=Math.max(.6,L-.75); a.ayaw=Math.atan2(dx,dz); b.kind='skip'; } }
+  const G=P.planGrp, box=(w,h,d,mat)=>{ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof mat==='string'?P.m(mat):mat); o.castShadow=true; o.receiveShadow=true; return o; };
+  const at=(sp,f,sd)=>[sp.pos.x+Math.sin(sp.yaw)*f+Math.cos(sp.yaw)*(sd||0), sp.pos.z+Math.cos(sp.yaw)*f-Math.sin(sp.yaw)*(sd||0)];
+  plan.spots.forEach(sp=>{ if(!sp.pos) return;
+    if(sp.kind==='table'){ const sz=PV_PROP[sp.prop].size, top=Math.max(.3,sp.pos.y-sz[1]/2), [x,z]=at(sp,.06); const tb=box(.5,top,.38,'#7a6e60'); tb.position.set(x,top/2,z); tb.rotation.y=sp.yaw; G.add(tb); }
+    if(sp.kind==='chair'){ const sw=sp.sofa?1.5:.46, col=sp.sofa?'#6d7f8f':'#6f6559'; const [x,z]=at(sp,-.02); const seat=box(sw,.38,.44,col); seat.position.set(x,.19,z); seat.rotation.y=sp.yaw; G.add(seat); const [bx,bz]=at(sp,-.24); const bk=box(sw,.55,.06,col); bk.position.set(bx,.38+.27,bz); bk.rotation.y=sp.yaw; G.add(bk); }
+    const put=(w,h,d,col,f,sd,y,yaw)=>{ const [x,z]=at(sp,f,sd); const o=box(w,h,d,col); o.position.set(x,y,z); o.rotation.y=yaw==null?sp.yaw:yaw; G.add(o); return o; };
+    if(sp.kind==='at_table'){ put(.9,.05,.6,'#b89a72',.52,0,.74); put(.1,.72,.1,'#6b5a45',.52,0,.36); }
+    if(sp.kind==='at_table2'){ const tb=box(.8,.05,sp.len,'#b89a72'); tb.position.set(sp.mid.x,.74,sp.mid.z); tb.rotation.y=sp.ayaw; G.add(tb); const lg=box(.12,.72,.12,'#6b5a45'); lg.position.set(sp.mid.x,.36,sp.mid.z); G.add(lg); }
+    if(sp.kind==='at_counter'){ put(1.8,1.05,.5,'#8c5a3c',.55,0,.52); put(1.9,.05,.6,'#cfc3a8',.55,0,1.07); }
+    if(sp.kind==='at_door'){ put(3.4,2.6,.12,'#b9a78f',-.56,0,1.3); put(.9,2.1,.06,'#6b4f3a',-.48,.8,1.05); put(.08,.08,.06,'#d9d9d9',-.44,.45,1.0); }
+    if(sp.kind==='at_wall'){ put(3.4,2.6,.12,'#bdb5a8',-.42,0,1.3); }
+    if(sp.kind==='at_window'){ put(3.4,2.6,.12,'#bdb5a8',-.52,0,1.3); const gl=new THREE.MeshStandardMaterial({color:'#bfe0f5',emissive:'#203040',flatShading:true}); put(1.4,1.0,.03,gl,-.45,0,1.45); }
+    if(sp.kind==='at_bed'){ if(sp.lie){ put(.95,.45,2.1,'#7d8fa6',-.85,0,.22); put(.6,.12,.35,'#eeeeee',-1.65,0,.5); } else put(.95,.45,2.0,'#7d8fa6',0,1.1,.22); }
+    if(sp.kind==='bell'){ const [x,z]=at(sp,.1); const post=box(.06,sp.pos.y,.06,'#5d5f66'); post.position.set(x,sp.pos.y/2,z); G.add(post);
+      const [px,pz]=at(sp,.065); const pan=box(.24,.32,.03,'#8b8f98'); pan.position.set(px,sp.pos.y,pz); pan.rotation.y=sp.yaw; G.add(pan);
+      const bm=new THREE.MeshStandardMaterial({color:'#b03a2e',emissive:'#000000',flatShading:true}); const [qx,qz]=at(sp,.04); const btn=box(.07,.07,.03,bm); btn.position.set(qx,sp.pos.y,qz); btn.rotation.y=sp.yaw; G.add(btn); sp.btn=bm; }
+    if(sp.kind==='door'){ const piv=new THREE.Group(); const [x,z]=at(sp,.07,-.8); piv.position.set(x,0,z); piv.rotation.y=sp.yaw; const slab=box(.9,2.1,.05,'#9a8064'); slab.position.set(.45,1.05,0); piv.add(slab); G.add(piv); sp.door=piv; }
+  });
+  plan.meshes={};
+  for(const k in plan.props){ const pp=PV_PROP[k]||PV_PROP.prop, sz=pp.size;
+    const geo=pp.cyl?new THREE.CylinderGeometry(sz[0]/2,sz[0]/2*.85,sz[1],12):new THREE.BoxGeometry(sz[0],sz[1],sz[2]);
+    const me=new THREE.Mesh(geo,P.m(pp.col)); me.castShadow=true; G.add(me); plan.meshes[k]=me; }
+}
+function pvEnsurePlan(P,cs,D0){
+  const D=D0||pvPlanDesc(cs);
+  if(P.plan&&P.plan.ck===P.ck&&P.ck&&P.plan.dur===S.dur&&D0) return P.plan;
+  const key=JSON.stringify([D.steps,D.sitInit,D.holdInit,D.poseInit,D.emoInit,D.atInit,cs.map(c=>[c.id,c.cat]),S.blk,S.dur]);
+  if(P.plan&&P.plan.key===key){ P.plan.ck=P.ck; P.plan.dur=S.dur; return P.plan; }
+  if(P.planGrp){ P.scene.remove(P.planGrp); P.planGrp.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
+  P.planGrp=new THREE.Group(); P.scene.add(P.planGrp);
+  const plan=pvBuildPlan(cs,D); plan.key=key; plan.ck=P.ck; plan.dur=S.dur; P.plan=plan;
+  if(!plan.active) plan.active=cs.some(c=>{ const e=plan.E[c.id]; return e.pose!=='stand'||e.emo!=='calm'||e.hold||e.at; });
+  if(plan.active) pvPrecompute(P,plan,cs);
+  if(plan.active) plan.frame=pvFrameBounds(plan,cs);
+  return plan;
+}
+// 整個鏡頭期間每個角色（相對焦點角色）實際到過的位置：雙人動作時讓兩人都留在畫面內
+function pvFrameBounds(plan,cs){
+  const fid=cs[0].id, b={}, n=16;
+  cs.forEach(c=>b[c.id]={x0:1e9,x1:-1e9,z0:1e9,z1:-1e9});
+  for(let i=0;i<=n;i++){ const t=S.dur*i/n, pos=pvPlace(cs,t), ev=pvPose(t,plan,pos), fp=pos[fid];
+    cs.forEach(c=>{ const s=ev.st[c.id], r=s?pvResolve(s,pos[c.id],pos,ev.st):pos[c.id], q=b[c.id], dx=r.x-fp.x, dz=r.z-fp.z; q.x0=Math.min(q.x0,dx); q.x1=Math.max(q.x1,dx); q.z0=Math.min(q.z0,dz); q.z1=Math.max(q.z1,dz); }); }
+  const pair=new Set(); plan.steps.forEach(s=>{ const A=PV_A[s.d.act]; if(A&&A.pair&&s.d.tgt){ pair.add(s.d.who); pair.add(s.d.tgt); } });
+  return {b,pair};
+}
+function pvPropsApply(P,plan,ev,t){
+  P.scene.updateMatrixWorld();
+  const v=new THREE.Vector3(), v2=new THREE.Vector3();
+  const hp=(h,out)=>{ const g=P.people[h.id]; if(!g) return 0; g.userData.parts['h'+h.hand].getWorldPosition(out); return g.rotation.y; };
+  for(const k in plan.meshes){ const me=plan.meshes[k], o=ev.props[k];
+    if(!o||!o.visible){ me.visible=false; continue; } me.visible=true;
+    if(o.fly&&o.fly.h){ const y=hp(o.fly.h,v), s=o.fly.s; v.x+=Math.sin(y)*s*2.2; v.z+=Math.cos(y)*s*2.2; v.y+=Math.sin(Math.PI*s)*.5-s*.7; me.position.copy(v); me.rotation.y=y+s*6; }
+    else if(o.trans&&o.trans.from){ const y1=hp(o.trans.from,v), y2=hp(o.trans.to,v2); v.lerp(v2,o.trans.s); me.position.copy(v); me.rotation.y=pvAng(y1,y2,o.trans.s); }
+    else if(o.holder){ me.rotation.y=hp(o.holder,v); me.position.copy(v); }
+    else if(o.rest!=null&&plan.spots[o.rest]&&plan.spots[o.rest].pos){ const sp=plan.spots[o.rest]; me.position.copy(sp.pos); me.rotation.y=sp.yaw; }
+    else me.visible=false; }
+  plan.spots.forEach((sp,i)=>{ if(sp.btn) sp.btn.emissive.set(ev.lit.has(i)?'#ff5a3c':'#000000');
+    if(sp.door){ const k=t>sp.litT?Math.min(1,(t-sp.litT)/.8):0; sp.door.rotation.y=sp.yaw-1.0*k; } });
+}
+function pvCaption(plan,t){ return plan.steps.filter(s=>t>=s.t0-.05&&t<=s.t1+.1).map(s=>pvStepLabel(s.d,plan.cs)).join('　＋　'); }
+let pvActSig='';
+function pvRenderActs(force){
+  const el=document.getElementById('pvActs'); if(!el) return;
+  const cs=pvSyncBlk(), ids=cs.map(c=>c.id), D=pvPlanDesc(cs), seq=S.blk._seq||[];
+  const sch=pvSchedule(D.steps.filter(d=>ids.includes(d.who)&&PV_A[d.act]),S.dur);
+  const sig=JSON.stringify([D.steps,D.unsup,D.sitInit,D.holdInit,D.poseInit,D.emoInit,D.atInit,D.scene,S.blk._st||{},S.blk._scene||'',S.assets,seq,cs.map(c=>[c.id,c.n]),S.dur]); if(!force&&sig===pvActSig) return; pvActSig=sig;
+  let h=`<div class="pvah"><b>動作時序</b><span class="pvtag${D.manual?' man':''}">${D.manual?'手動（優先於自動解析）':'自動解析：畫面內容補充＋動作卡'}</span></div>`;
+  if(sch.length) h+=`<ol class="pval">${sch.map(({d,t0,t1})=>`<li><span class="tm">${t0.toFixed(1)}–${t1.toFixed(1)}s</span>${pvEsc(pvStepLabel(d,cs))}${d.with?'（同時）':''}${d.src?`<span class="src">　← ${pvEsc(d.src)}</span>`:''}</li>`).join('')}</ol>`;
+  else h+=`<div class="empty">沒有可預演的動作描述：角色維持站位設定，不加動作。</div>`;
+  const E=pvStates(cs,D), sc=pvSceneOf(D), st=[];
+  cs.forEach(c=>{ const e=E[c.id], a=[]; if(e.pose!=='stand') a.push(PV_POSE[e.pose]); if(e.emo!=='calm') a.push(PV_EMO[e.emo]); if(e.hold) a.push('拿著'+PV_PROP[e.hold].zh); if(e.at) a.push('在'+PV_AT[e.at]); if(a.length) st.push(c.n+' '+a.join('、')); });
+  h+=`<div class="pvnote" style="margin-top:0">場景：${pvEsc(PV_SCENE[sc.k])}${sc.src==='text'?'（依文字）':sc.src==='asset'?'（依素材「'+pvEsc(sc.n)+'」）':sc.src==='manual'?'（手動）':'（預設）'}${st.length?'｜開場狀態：'+pvEsc(st.join('；')):''}</div>`;
+  D.unsup.forEach(u=>{ h+=`<div class="pvwarn">⚠ 這句動作未支援：「${pvEsc(u.text)}」${u.verb?`（${pvEsc(u.verb)}）`:''}${u.why?`：${pvEsc(u.why)}`:''}。請在下面手動選擇動作。</div>`; });
+  const actOpts=k=>Object.entries(PV_A).map(([key,a])=>`<option value="${key}"${key===k?' selected':''}>${a.zh}</option>`).join('');
+  const chOpts=(v,ex,blank)=>(blank?`<option value="">${blank}</option>`:'')+cs.filter(c=>c.id!==ex).map(c=>`<option value="${c.id}"${c.id===v?' selected':''}>${pvEsc(c.n)}</option>`).join('');
+  const prOpts=v=>`<option value="">道具：自動</option>`+Object.entries(PV_PROP).map(([k,p])=>`<option value="${k}"${k===v?' selected':''}>${p.zh}</option>`).join('');
+  h+=`<div class="pvman"><div class="pvnote" style="margin-top:0">手動動作：每一步選角色、動作、對象，可排序。有手動動作時，預演只用這份清單（站位、朝向、運鏡設定不變）。</div>`;
+  seq.forEach((r,i)=>{ const A=PV_A[r.act]||{};
+    h+=`<div class="pvmrow" data-i="${i}"><span class="tm">${i+1}.</span><select data-sq="who" title="角色">${chOpts(r.who)}</select><select data-sq="act" title="動作">${actOpts(r.act)}</select><select data-sq="tgt" title="對象"${A.pair?'':' disabled'}>${chOpts(r.tgt,r.who,'對象：自動')}</select><select data-sq="prop" title="道具"${A.prop?'':' disabled'}>${prOpts(r.prop)}</select><label><input type="checkbox" data-sq="with"${r.with?' checked':''}>與上一步同時</label><button type="button" data-sqm="up" title="上移">↑</button><button type="button" data-sqm="down" title="下移">↓</button><button type="button" data-sqm="del" title="刪除">✕</button></div>`; });
+  h+=`<div class="pvmb"><button type="button" data-sqm="add">＋ 加動作</button><button type="button" data-sqm="auto">把自動解析帶入手動</button>${seq.length?'<button type="button" data-sqm="clear">清除手動，回到自動</button>':''}</div></div>`;
+  el.innerHTML=h;
+}
+{ const el=document.getElementById('pvActs');
+  el.addEventListener('change',e=>{ const t=e.target, k=t.dataset.sq; if(!k) return; const row=t.closest('[data-i]'); if(!row) return; const r=(S.blk._seq||[])[+row.dataset.i]; if(!r) return;
+    r[k]=k==='with'?t.checked:t.value; if(k==='who'&&r.tgt===r.who) r.tgt=''; update(); pvRenderActs(true); });
+  el.addEventListener('click',e=>{ const b=e.target.closest('[data-sqm]'); if(!b) return; e.stopPropagation();
+    const op=b.dataset.sqm, cs=pvSyncBlk(), seq=S.blk._seq=S.blk._seq||[], row=b.closest('[data-i]'), i=row?+row.dataset.i:-1;
+    if(op==='add') seq.push({who:cs[0].id,act:cs.length>1?'give':'pickup',tgt:'',prop:'',with:false});
+    else if(op==='auto'){ const R=pvCards(pvParse(S.f.content||'',cs),cs); S.blk._seq=R.steps.map(d=>({who:d.who,act:d.act,tgt:d.tgt||'',prop:d.prop||'',with:false})); if(!S.blk._seq.length) S.blk._seq.push({who:cs[0].id,act:'pickup',tgt:'',prop:'',with:false}); }
+    else if(op==='clear') S.blk._seq=[];
+    else if(op==='del') seq.splice(i,1);
+    else if(op==='up'&&i>0) [seq[i-1],seq[i]]=[seq[i],seq[i-1]];
+    else if(op==='down'&&i>=0&&i<seq.length-1) [seq[i+1],seq[i]]=[seq[i],seq[i+1]];
+    update(); pvRenderActs(true); }); }
+
+/* ---------- 畫面內容補充：每個角色的 姿勢／情緒／手上拿／位置參照，加場景 ---------- */
+let pvCtSig='';
+function pvAutoScene(D){ if(D.scene) return D.scene; const sa=assetRefs().find(r=>r.a.scene&&PV_SCENE_OF[r.a.id]); return sa?PV_SCENE_OF[sa.a.id]:'street'; }
+function pvRenderCt(force){
+  const el=document.getElementById('pvCtRows'); if(!el) return;
+  const cs=pvSyncBlk(), D=pvPlanDesc(cs), E=pvStates(cs,D), man=S.blk._st||{}, msc=S.blk._scene||'', asc=pvAutoScene(D);
+  const sig=JSON.stringify([cs.map(c=>[c.id,c.n,c.ref]),E,msc,asc]); if(!force&&sig===pvCtSig) return; pvCtSig=sig;
+  const PROPZH={}; for(const k in PV_PROP) PROPZH[k]=PV_PROP[k].zh;
+  const opt=(map,val,auto)=>`<option value="">${auto}</option>`+Object.entries(map).map(([k,v])=>`<option value="${k}"${k===val?' selected':''}>${pvEsc(v)}</option>`).join('');
+  const au=(v,map,none)=>`自動（${v?map[v]:none}）`;
+  let h=`<div class="pvsc">在哪（場景）<select data-ct="_scene" class="${msc?'man':''}" title="自動：依文字描述，否則依選用的場景素材">${opt(PV_SCENE,msc,au(asc,PV_SCENE,''))}</select></div>`;
+  cs.forEach((c,i)=>{ const m=man[c.id]||{}, e=E[c.id], sel=(k,map,none,label)=>`<label>${label}<select data-ct="${k}" data-id="${c.id}" class="${m[k]?'man':''}">${opt(map,m[k]||'',au(e.auto[k],map,none))}</select></label>`;
+    h+=`<div class="pvcr"><div class="nm"><span class="sw" style="background:${PV_COL[i]};width:10px;height:10px;border-radius:2px;display:inline-block"></span>${c.ref?'@圖片'+c.ref+' ':''}${pvEsc(c.n)}</div><div class="pvcg">${sel('pose',PV_POSE,'站著','姿勢')}${sel('emo',PV_EMO,'平靜','情緒')}${sel('hold',Object.assign({none:'空手'},PROPZH),'空手','手上拿')}${sel('at',Object.assign({none:'無'},PV_AT),'無','位置參照')}</div></div>`; });
+  h+=`<div class="pvnote">「自動」跟上面文字的解析結果；手動選了的欄位（金框）優先，也會寫進指令【人物狀態】。左右前後站位在左邊「3D 站位設定」。</div>`;
+  el.innerHTML=h;
+}
+{ const box=document.getElementById('pvCt');
+  box.addEventListener('input',onFieldInput);
+  box.addEventListener('change',e=>{ const t=e.target, k=t.dataset.ct; if(!k) return;
+    if(k==='_scene'){ if(t.value) S.blk._scene=t.value; else delete S.blk._scene; }
+    else { const st=S.blk._st=S.blk._st||{}, id=t.dataset.id, m=st[id]=st[id]||{}; if(t.value) m[k]=t.value; else delete m[k]; if(!Object.keys(m).length) delete st[id]; }
+    update(); pvRenderCt(true); }); }
+
+function pvFrame(t,composite){
+  const P=pvInit(); if(!P) return;
+  const cs=pvSyncBlk(); const dur=S.dur; const k=Math.min(1,t/dur); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+  // characters
+  const keep=new Set(cs.map(c=>c.id));
+  for(const id in P.people){ if(!keep.has(id)){ P.scene.remove(P.people[id]); delete P.people[id]; } }
+  // 文字解析每格重做太慢（錄影會掉格）：設定沒變就沿用
+  const ck=JSON.stringify([S.f.content,S.blk,S.assets,S.proj,S.sel.body,S.sel.act,cs.map(c=>c.id)]);
+  if(P.ck!==ck){ P.ck=ck; P.D0=pvPlanDesc(cs); P.E0=pvStates(cs,P.D0); P.sc0=pvSceneOf(P.D0).k; }
+  const D0=P.D0, E0=P.E0;
+  cs.forEach((c,i)=>{ const emo=E0[c.id].emo, lab=c.n+(emo&&emo!=='calm'?'・'+PV_EMO[emo]:''), key=c.id+'|'+lab+'|'+i; if(!P.people[c.id]||P.people[c.id].userData.key!==key){ if(P.people[c.id]) P.scene.remove(P.people[c.id]); const g=pvPerson(PV_COL[i],lab,c.cat); g.userData.key=key; P.people[c.id]=g; } });
+  pvEnv(P.sc0);
+  const pos=pvPlace(cs,t);
+  const plan=pvEnsurePlan(P,cs,D0);
+  const ev=plan.active?pvPose(t,plan,pos):null;
+  pvPoseApply(P,cs,pos,t,ev);
+  if(plan.active) pvPropsApply(P,plan,ev,t);
+  const cap=plan.active?pvCaption(plan,t):'';
+  { const ha=document.getElementById('pvHudA'); if(ha){ if(ha.textContent!==cap) ha.textContent=cap; ha.style.display=cap?'block':'none'; } }
+  // camera
+  const size=g('size'), angle=g('angle'), move=g('move'), lens=g('lens');
+  const [d0,ty0]=PV_SIZE[size?size.k:'ms']; const f=PV_FOCAL[lens?lens.k:'50']||50;
+  const portrait=S.aspect==='9:16'; const sensorH=portrait?36:24;
+  P.cam.fov=2*Math.atan(sensorH/2/f)*180/Math.PI; P.cam.aspect=portrait?9/16:16/9;
+  const focus=cs[0], fp=pos[focus.id]; let ty=focus.cat?Math.min(0.4,ty0*0.25):ty0;
+  if(plan.active&&plan.init[focus.id]&&!focus.cat){ const q=plan.init[focus.id], off=q.lie?.9:q.sit?.42:q.kneel?.31:q.sq?.5:0; if(off) ty=Math.max(.35,ty-off); }
+  let dist=d0*(f/50)*(focus.cat?0.45:1);
+  const mk=move?move.k:'fixed';
+  if(mk==='push') dist*=1.45-0.55*e; if(mk==='pull') dist*=0.8+0.8*e;
+  let az=0, camY=ty, lookY=ty, tx=fp.x, tz=fp.z, ox=0, roll=0;
+  const sk=size?size.k:'ms';
+  const ak0=angle?angle.k:'eye';
+  if(plan.active && plan.frame && cs.length>1 && !['ots','pov','top'].includes(ak0)){
+    // 敘事動作：用整段動作的實際位置取景，被推開、走近、擁抱的人都要入鏡
+    const fb=plan.frame, wide=['els','ws','ms'].includes(sk), ids=new Set(fb.pair);
+    if(wide) cs.forEach(c=>{ if(Math.abs(pos[c.id].z-fp.z)<1.2) ids.add(c.id); });
+    if(ids.size>1){ ids.add(focus.id); let x0=1e9,x1=-1e9; ids.forEach(id=>{ const q=fb.b[id]; x0=Math.min(x0,q.x0); x1=Math.max(x1,q.x1); });
+      const cxo=(x0+x1)/2; tx=fp.x+cxo; const hf=2*Math.atan(Math.tan(P.cam.fov*Math.PI/360)*P.cam.aspect), th=Math.tan(hf/2);
+      let need=0; ids.forEach(id=>{ const q=fb.b[id], half=Math.max(Math.abs(q.x0-cxo),Math.abs(q.x1-cxo))+.5; need=Math.max(need,half/th+q.z1); });
+      if(mk!=='push'&&mk!=='pull') dist=Math.max(dist,need); else dist*=Math.max(1,need/(d0*(f/50))); }
+  }
+  else if(cs.length>1 && ['els','ws','ms'].includes(sk)){ const grp=cs.map(c=>pos[c.id]).filter(p=>Math.abs(p.z-fp.z)<1.2); if(grp.length>1){ const xs2=grp.map(p=>p.x); const mn=Math.min(...xs2), mx=Math.max(...xs2); tx=(mn+mx)/2; const hf=2*Math.atan(Math.tan(P.cam.fov*Math.PI/360)*P.cam.aspect); const need=((mx-mn)/2+0.55)/Math.tan(hf/2); if(mk!=='push'&&mk!=='pull') dist=Math.max(dist,need); else dist*=Math.max(1,need/(d0*(f/50))); } }
+  const ak=angle?angle.k:'eye';
+  if(ak==='low'){ camY=Math.max(0.25,ty*0.35); } if(ak==='high'){ camY=ty+2.2; } if(ak==='dutch'){ roll=0.21; }
+  if(mk==='truck') ox=-1.2+2.4*e; if(mk==='orbit') az=1.2*e; if(mk==='crane') camY+=2.6*e; if(mk==='craneDown') camY+=2.6*(1-e);
+  let cx=tx+ox+Math.sin(az)*dist, cz=tz+Math.cos(az)*dist;
+  if(mk==='follow'){ /* camera keeps fixed offset from moving focus */ }
+  if(ak==='top'){ cx=tx; cz=tz+0.01; camY=dist*1.3+2; lookY=0; }
+  const other=cs[1]?pos[cs[1].id]:null;
+  if(ak==='ots'){ const ox2=other?other.x:tx+0.8, oz2=other?other.z:tz+1.4; const dx=ox2-tx, dz=oz2-tz, L=Math.hypot(dx,dz)||1; cx=ox2+dx/L*1.05+(-dz/L)*0.5; cz=oz2+dz/L*1.05+(dx/L)*0.5; camY=(focus.cat?0.5:1.72); lookY=focus.cat?0.3:1.55; }
+  if(ak==='pov'){ const ox2=other?other.x:tx, oz2=other?other.z:tz+dist; cx=ox2; cz=oz2; camY=1.62; lookY=focus.cat?0.3:1.6; }
+  P.cam.position.set(cx,camY,cz);
+  let lx=tx, lz=tz;
+  if(mk==='pan'){ const a=(-0.45+0.45*e); const dx=tx-cx, dz=tz-cz; lx=cx+dx*Math.cos(a)-dz*Math.sin(a); lz=cz+dx*Math.sin(a)+dz*Math.cos(a); }
+  if(mk==='hand'){ P.cam.position.x+=Math.sin(t*2.3)*0.03; P.cam.position.y+=Math.sin(t*3.1)*0.02; }
+  P.cam.up.set(0,1,0); P.cam.lookAt(lx,lookY,lz); if(roll) P.cam.rotateZ(roll);
+  P.cam.updateProjectionMatrix();
+  cs.forEach(c=>{ const gp=P.people[c.id]; const lab=gp.children[gp.children.length-1]; lab.visible = gp.position.distanceTo(P.cam.position)>1.8; });
+  // render
+  const W2=portrait?540:960, H2=portrait?960:540;
+  if(P.out.width!==W2){ P.out.width=W2; P.out.height=H2; P.r.setSize(W2,H2,false); }
+  P.r.render(P.scene,P.cam);
+  const ss0=Math.floor(t), fr0=Math.floor((t-ss0)*30);
+  const hudL=`${S.f.no||'S01'}  ${size?size.zh:'中景'}・${angle?angle.zh:'平視'}・${PV_MOVE[mk]}・${f}mm`, hudR=`00:00:${String(ss0).padStart(2,'0')}:${String(fr0).padStart(2,'0')}`;
+  const ht=document.getElementById('pvHudT'); if(ht){ const h=`<span>${hudL}</span><span>${hudR}</span>`; if(ht.innerHTML!==h) ht.innerHTML=h; }
+  if(!composite) return;
+  const x=P.ctx; x.drawImage(P.glc,0,0,W2,H2);
+  x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(0,0,W2,34); x.fillStyle='#fff'; x.font='bold 18px "Noto Sans TC",sans-serif'; x.textAlign='left';
+  x.fillText(`${S.f.no||'S01'}  ${size?size.zh:'中景'}・${angle?angle.zh:'平視'}・${PV_MOVE[mk]}・${f}mm`,10,23);
+  x.textAlign='right'; const ss=Math.floor(t), fr=Math.floor((t-ss)*30); x.fillText(`00:00:${String(ss).padStart(2,'0')}:${String(fr).padStart(2,'0')}`,W2-10,23);
+  x.textAlign='left'; x.font='13px "Noto Sans TC",sans-serif'; x.fillStyle='rgba(255,255,255,.8)'; x.fillText('站位預演｜灰模只作位置與運鏡參考',10,H2-12);
+  if(cap){ x.font='bold 16px "Noto Sans TC",sans-serif'; const cw=Math.min(W2-20,x.measureText(cap).width+20); x.fillStyle='rgba(0,0,0,.6)'; x.fillRect((W2-cw)/2,H2-62,cw,28); x.fillStyle='#ffd9a0'; x.textAlign='center'; x.fillText(cap,W2/2,H2-42,W2-30); }
+}
+function pvMsg(m){ const el=document.getElementById('pvMsg'); if(el){ el.textContent=m; } }
+function pvPlay(record){ const comp=!!record;
+  const P=pvInit(); if(!P){ pvMsg('3D 引擎載入失敗，請重新整理'); return Promise.resolve(null); }
+  if(P.playing) return Promise.resolve(null);
+  P.playing=true; const dur=S.dur; const t0=performance.now();
+  return new Promise(res=>{ const step=()=>{ const t=(performance.now()-t0)/1000; pvFrame(Math.min(t,dur),comp); if(t<dur){ requestAnimationFrame(step); } else { P.playing=false; res(true); } }; requestAnimationFrame(step); });
+}
+async function pvRecord(){
+  const P=pvInit(); if(!P) return;
+  if(P.playing){ pvMsg('等播放完再錄…'); await new Promise(r=>{ const w=()=>P.playing?setTimeout(w,60):r(); w(); }); }
+  pvFrame(0,true);
+  const types=['video/mp4;codecs=avc1','video/mp4','video/webm','video/webm;codecs=vp9'];
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));
+  if(!mime){ pvMsg('這個瀏覽器不支援錄影'); return; }
+  const stream=P.out.captureStream(30); const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6e6}); const chunks=[];
+  rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+  const done=new Promise(r=>rec.onstop=r);
+  // 先用第 0 格餵編碼器暖身，第一次錄影才不會被截短；分段收資料
+  pvMsg('錄製中…'); rec.start(); for(let i=0;i<8;i++){ await new Promise(r=>requestAnimationFrame(r)); pvFrame(0,true); } await pvPlay(true); await new Promise(r=>setTimeout(r,200)); rec.stop(); await done;
+  const ext=mime.includes('mp4')?'mp4':'webm'; const blob=new Blob(chunks,{type:mime.split(';')[0]});
+  if(blob.size<=120 && (pvRecord._retried||0)<2){ pvRecord._retried=(pvRecord._retried||0)+1; try{ await pvRecord(); }finally{ pvRecord._retried=0; } return; }
+  if(EMBED){ try{ await MediaDB.put('pv:'+EMBED.shot,blob); try{ localStorage.setItem('shotMediaPing',String(Date.now())); }catch(_){} try{ parent.postMessage({type:'pvSaved',shot:EMBED.shot},'*'); }catch(_){} pvMsg('已存到鏡頭表（'+ext+'）'); }
+    catch(e){ pvMsg('無法儲存影片：瀏覽器不支援 IndexedDB 或空間不足'); } return; }
+  const name=`${S.f.no||'S01'}-previz.${ext}`;
+  try{
+    let dl=null; try{ dl=window.claude&&await claude.use('downloads'); }catch(_){ dl=null; }
+    if(dl){ await dl.save({filename:name,data:blob}); }
+    else { const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
+    pvMsg('已下載 '+name+(ext==='webm'?'（webm；若平台不收，可用剪映轉 mp4）':''));
+  }catch(e){ pvMsg(e&&e.code==='declined'?'已取消下載':'下載失敗：'+((e&&e.code)||e.message||'')); }
+}
+document.getElementById('pvPlay').onclick=()=>{ genNow(); pvPlay(false); };
+const pvBoxEl=document.getElementById('pvBox');
+document.getElementById('pvView').onclick=e=>{ e.stopPropagation(); if(EMBED){ pvPlay(false); return; } pvBoxEl.classList.toggle('big'); };
+document.getElementById('pvClose').onclick=e=>{ e.stopPropagation(); pvBoxEl.classList.remove('big'); };
+pvBoxEl.addEventListener('click',e=>{ if(pvBoxEl.classList.contains('big') && (e.target===pvBoxEl || e.target.classList.contains('pvstage'))) pvBoxEl.classList.remove('big'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.getElementById('pvBox').classList.remove('big'); });
+document.getElementById('pvRec').onclick=()=>{ genNow(); pvRecord(); };
+let pvPending=false, pvSig='', pvReady=false;
+function pvSync(){ if(pvPending) return; pvPending=true; requestAnimationFrame(()=>{ pvPending=false;
+  const cs=pvSyncBlk(); const sig=JSON.stringify(cs.map(c=>[c.id,c.n,c.ref,S.blk[c.id]]));
+  if(sig!==pvSig){ pvSig=sig; pvRenderControls(); }
+  try{ pvRenderActs(); }catch(e){ console.error(e); }
+  try{ pvRenderCt(); }catch(e){ console.error(e); }
+  if(pvReady){ document.getElementById('pvView').classList.toggle('stale', pvKey()!==pvAppliedKey); setDirtyUI(); } }); }
+let pvAppliedKey='';
+function pvKey(){ const cs=pvChars(); return JSON.stringify([cs.map(c=>[c.id,c.n,S.blk[c.id]]),S.sel.size,S.sel.angle,S.sel.move,S.sel.lens,S.dur,S.aspect,S.f.no,S.f.content,S.sel.body,S.sel.act,S.blk._seq||[],S.blk._st||{},S.blk._scene||'',S.assets]); }
+function pvApply(){ if(PV&&PV.playing) return; pvSyncBlk(); pvFrame(0); pvReady=true; pvAppliedKey=pvKey(); document.getElementById('pvView').classList.remove('stale'); setDirtyUI(); }
+function genNow(){ S.gen=true; update(); S.gen=false; pvApply(); }
+document.getElementById('genBtn').onclick=()=>{ genNow(); toast('已更新指令和預演'); };
+const __updOrig=update; update=function(){ __updOrig(); try{ pvSync(); }catch(e){ console.error(e); } };
+
+restore({sel:{size:'cu',angle:'eye',move:'push',lens:'85',light:'rembrandt',act:'lookup',body:'none'},ban:[0,1,2,3],dur:4,aspect:'9:16',f:{...S.f},proj:'default',assets:[]});
+document.getElementById('lb').onclick=()=>document.getElementById('lb').classList.remove('on');
+(async()=>{
+  await loadCustomAssets();
+  slBackfill();
+  renderShots();
+  if(EMBED){
+    // shots.html 每列內嵌的即時預演：只顯示預演畫面，載入該鏡的設定
+    document.body.classList.add('embed'); document.title='預演';
+    document.getElementById('pvPlay').textContent='▶ 播放'; document.getElementById('pvRec').textContent='● 錄製存到此鏡';
+    document.getElementById('pvHudB').style.display='none';
+    slLoad(); const l=SL.lists.find(x=>x.id===EMBED.list), o=l&&l.shots.find(x=>x.id===EMBED.shot);
+    if(o){ restore(o.state); setTimeout(()=>{ genNow(); pvPlay(false); },0); } else { setTimeout(genNow,0); pvMsg('找不到這一鏡'); }
+  } else {
+    setTimeout(()=>{ genNow(); loadFromHash(); },0);
+  }
+})();
+</script>
+</body>
+</html>
